@@ -5,7 +5,7 @@ description = "Simple utilities to work with images"
 readme = "README.md"
 requires-python = ">=3.9.0"
 dynamic = ["version"]
-
+dependencies = ["numpy", "scipy"]
 license = {text = "MIT"}
 
 classifiers = [
