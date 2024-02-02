@@ -82,7 +82,7 @@ ignore = [
 [tool.ruff]
 line-length = 88
 exclude = ["__init__.py","build",".eggs"]
-lint.select = ["I", "E", "F"]
+select = ["I", "E", "F"]
 fix = true
 
 [tool.tox]

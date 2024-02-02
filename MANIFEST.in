@@ -1,6 +1,5 @@
 include LICENSE
 include README.md
-include mypy.ini
 exclude .pre-commit-config.yaml
 
 recursive-exclude * __pycache__

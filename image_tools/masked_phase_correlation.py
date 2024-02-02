@@ -11,14 +11,15 @@ Translated from matlab code by D. Padfield using copilot.
 from typing import Optional
 
 import numpy as np
-from scipy.fft import fft2, fftshift, ifft2
+import numpy.typing as npt
+from scipy.fft import fft2, fftshift, ifft2  # type: ignore
 
 
 def masked_translation_registration(
-    fixed_image: np.array,
-    moving_image: np.array,
-    fixed_mask: np.array,
-    moving_mask: np.array,
+    fixed_image: npt.NDArray,
+    moving_image: npt.NDArray,
+    fixed_mask: npt.NDArray,
+    moving_mask: npt.NDArray,
     overlap_ratio: float = 0.3,
     max_shift: Optional[int] = None,
     min_shift: Optional[int] = None,
@@ -31,10 +32,10 @@ def masked_translation_registration(
     https://ieeexplore.ieee.org/document/6111478
 
     Args:
-        fixed_image (np.array): The fixed image.
-        moving_image (np.array): The moving image.
-        fixed_mask (np.array): The fixed mask.
-        moving_mask (np.array): The moving mask.
+        fixed_image (npt.NDArray): The fixed image.
+        moving_image (npt.NDArray): The moving image.
+        fixed_mask (npt.NDArray): The fixed mask.
+        moving_mask (npt.NDArray): The moving mask.
         overlap_ratio (float): The overlap ratio.
         max_shift (int): Maximum allowed shift.
         min_shift (int): Minimum allowed shift.
@@ -42,8 +43,8 @@ def masked_translation_registration(
     Returns:
         tuple: The translation corresponding to the maximum correlation.
         float: The maximum correlation
-        np.array: the cross-correlation
-        np.array: the number of overlap masked pixels at each shift.
+        npt.NDArray: the cross-correlation
+        npt.NDArray: the number of overlap masked pixels at each shift.
     """
     xcorr, number_of_overlap_masked_pixels = normxcorr2_masked(
         fixed_image, moving_image, fixed_mask, moving_mask

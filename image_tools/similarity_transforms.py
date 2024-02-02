@@ -1,11 +1,12 @@
 from math import cos, radians, sin
 
 import numpy as np
+import numpy.typing as npt
 from skimage.transform import SimilarityTransform, warp
 
 
 def transform_image(
-    im: np.array,
+    im: npt.NDArray,
     scale: float = 1,
     angle: float = 0,
     shift: tuple = (0, 0),
@@ -15,14 +16,14 @@ def transform_image(
     Transform an image using provided scale, rotation angle, and shift.
 
     Args:
-        im (numpy.ndarray): image to transform
+        im (npt.NDArray): image to transform
         scale (float): scale factor
         angle (float): rotation angle in degrees
         shift (tuple): shift in x and y
         cval (float): value to fill in for pixels outside of the image
 
     Returns:
-        numpy.ndarray: transformed image
+        npt.NDArray: transformed image
 
     """
     tform = SimilarityTransform(matrix=make_transform(scale, angle, shift, im.shape))
