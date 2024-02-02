@@ -5,7 +5,7 @@ description = "Simple utilities to work with images"
 readme = "README.md"
 requires-python = ">=3.9.0"
 dynamic = ["version"]
-dependencies = ["numpy", "scipy"]
+dependencies = ["numpy", "scipy", "pathlib"]
 license = {text = "MIT"}
 
 classifiers = [
@@ -38,6 +38,7 @@ dev = [
   "pre-commit",
   "ruff",
   "setuptools_scm",
+  "imageio",
 ]
 
 [build-system]
