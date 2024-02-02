@@ -1,25 +1,26 @@
 API
 ===
 
-math
+Phase correlations
 ----
 
-.. currentmodule:: image_tools.math
+.. currentmodule:: image_tools.masked_phase_correlation
 
 .. autosummary::
     :toctree: api_generated
     :template: function.rst
 
-    add_two_integers
-    subtract_two_integers
+    masked_translation_registration
+    normxcorr2_masked
 
-greetings
+Similarity transformation
 ---------
 
-.. currentmodule:: image_tools.greetings
+.. currentmodule:: image_tools.similarity_transforms
 
 .. autosummary::
     :toctree: api_generated
-    :template: class.rst
+    :template: function.rst
 
-    Greetings
+    transform_image
+    make_transform
