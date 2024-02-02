@@ -1,10 +1,10 @@
 API
 ===
 
-Phase correlations
+Registration
 ----
 
-.. currentmodule:: image_tools.masked_phase_correlation
+.. currentmodule:: image_tools.registration
 
 .. autosummary::
     :toctree: api_generated

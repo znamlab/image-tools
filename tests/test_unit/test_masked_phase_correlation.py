@@ -3,7 +3,7 @@ from pathlib import Path
 import imageio.v2 as imageio
 import numpy as np
 
-from image_tools import masked_phase_correlation as mpc
+from image_tools.registration import masked_phase_correlation as mpc
 from image_tools.similarity_transforms import transform_image
 
 
