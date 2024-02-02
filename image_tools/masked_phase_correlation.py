@@ -10,13 +10,13 @@ Translated from matlab code by D. Padfield using copilot.
 
 
 import numpy as np
-from scipy.fftpack import fft2, ifft2
+from scipy.fft import fft2, ifft2
 
 
 def masked_translation_registration(
     fixed_image, moving_image, fixed_mask, moving_mask, overlap_ratio=0.3
 ):
-    C, number_of_overlap_masked_pixels = normxcorr2_masked(
+    xcorr, number_of_overlap_masked_pixels = normxcorr2_masked(
         fixed_image, moving_image, fixed_mask, moving_mask
     )
 
@@ -24,19 +24,30 @@ def masked_translation_registration(
 
     # Mask the borders
     number_of_pixels_threshold = overlap_ratio * np.max(number_of_overlap_masked_pixels)
-    C[number_of_overlap_masked_pixels < number_of_pixels_threshold] = 0
+    xcorr[number_of_overlap_masked_pixels < number_of_pixels_threshold] = 0
 
-    maxC = np.max(C)
-    ypeak, xpeak = np.unravel_index(np.argmax(C), C.shape)
+    maxC = np.max(xcorr)
+    ypeak, xpeak = np.unravel_index(np.argmax(xcorr), xcorr.shape)
     transform = [xpeak - image_size[1], ypeak - image_size[0]]
 
     # Take the negative of the transform so that it has the correct sign.
     transform = [-x for x in transform]
 
-    return transform, maxC, C, number_of_overlap_masked_pixels
+    return transform, maxC, xcorr, number_of_overlap_masked_pixels
 
 
 def normxcorr2_masked(fixed_image, moving_image, fixed_mask, moving_mask):
+
+    float_dtype = moving_image.dtype
+    if not np.issubdtype(float_dtype, np.floating):
+        # we probably have a boolean array. Use float32 for the FFTs.
+        float_dtype = np.float32
+
+    fixed_image = fixed_image.astype(float_dtype)
+    moving_image = moving_image.astype(float_dtype)
+    fixed_mask = fixed_mask.astype(float_dtype)
+    moving_mask = moving_mask.astype(float_dtype)
+
     fixed_mask = np.where(fixed_mask <= 0, 0, 1)
     moving_mask = np.where(moving_mask <= 0, 0, 1)
 
@@ -60,9 +71,10 @@ def normxcorr2_masked(fixed_image, moving_image, fixed_mask, moving_mask):
     fixed_mask_fft = fft2(fixed_mask, optimal_size)
     rotated_moving_mask_fft = fft2(rotated_moving_mask, optimal_size)
 
-    number_of_overlap_masked_pixels = np.real(
-        ifft2(rotated_moving_mask_fft * fixed_mask_fft)
-    )
+    number_of_overlap_masked_pixels = ifft2(
+        rotated_moving_mask_fft * fixed_mask_fft
+    ).real
+
     number_of_overlap_masked_pixels = np.round(number_of_overlap_masked_pixels)
     number_of_overlap_masked_pixels = np.maximum(
         number_of_overlap_masked_pixels, np.finfo(float).eps
@@ -99,19 +111,19 @@ def normxcorr2_masked(fixed_image, moving_image, fixed_mask, moving_mask):
 
     denom = np.sqrt(fixed_denom * moving_denom)
 
-    C = np.zeros(numerator.shape)
+    xcorr = np.zeros(numerator.shape)
     tol = 1000 * np.finfo(float).eps * np.max(np.abs(denom))
     i_nonzero = np.where(denom > tol)
-    C[i_nonzero] = numerator[i_nonzero] / denom[i_nonzero]
-    C = np.where(C < -1, -1, C)
-    C = np.where(C > 1, 1, C)
+    xcorr[i_nonzero] = numerator[i_nonzero] / denom[i_nonzero]
+    xcorr = np.where(xcorr < -1, -1, xcorr)
+    xcorr = np.where(xcorr > 1, 1, xcorr)
 
-    C = C[0 : combined_size[0], 0 : combined_size[1]]
+    xcorr = xcorr[0 : combined_size[0], 0 : combined_size[1]]
     number_of_overlap_masked_pixels = number_of_overlap_masked_pixels[
         0 : combined_size[0], 0 : combined_size[1]
     ]
 
-    return C, number_of_overlap_masked_pixels
+    return xcorr, number_of_overlap_masked_pixels
 
 
 def find_closest_valid_dimension(n):
