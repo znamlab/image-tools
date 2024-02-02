@@ -129,3 +129,27 @@ def factorize_number(n):
         while n % ifac == 0:
             n /= ifac
     return n
+
+
+def transform_image_translation(moving_image, transform, fixed_image_size=None):
+    if fixed_image_size is None:
+        fixed_image_size = moving_image.shape
+
+    moving_image_size = moving_image.shape
+
+    x = np.arange(1, fixed_image_size[1] + 1) + transform[0]
+    border_indices_x = np.where((x < 1) | (x > moving_image_size[1]))
+    np.where((x >= 1) & (x <= moving_image_size[1]))
+    x[border_indices_x] = 1
+
+    y = np.arange(1, fixed_image_size[0] + 1) + transform[1]
+    border_indices_y = np.where((y < 1) | (y > moving_image_size[0]))
+    np.where((y >= 1) & (y <= moving_image_size[0]))
+    y[border_indices_y] = 1
+
+    transformed_image = np.zeros(fixed_image_size)
+    transformed_image = moving_image[np.ix_(y - 1, x - 1)]
+    transformed_image[:, border_indices_x] = 0
+    transformed_image[border_indices_y, :] = 0
+
+    return transformed_image
