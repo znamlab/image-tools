@@ -13,6 +13,29 @@ import numpy as np
 from scipy.fftpack import fft2, ifft2
 
 
+def masked_translation_registration(
+    fixed_image, moving_image, fixed_mask, moving_mask, overlap_ratio=0.3
+):
+    C, number_of_overlap_masked_pixels = normxcorr2_masked(
+        fixed_image, moving_image, fixed_mask, moving_mask
+    )
+
+    image_size = moving_image.shape
+
+    # Mask the borders
+    number_of_pixels_threshold = overlap_ratio * np.max(number_of_overlap_masked_pixels)
+    C[number_of_overlap_masked_pixels < number_of_pixels_threshold] = 0
+
+    maxC = np.max(C)
+    ypeak, xpeak = np.unravel_index(np.argmax(C), C.shape)
+    transform = [xpeak - image_size[1], ypeak - image_size[0]]
+
+    # Take the negative of the transform so that it has the correct sign.
+    transform = [-x for x in transform]
+
+    return transform, maxC, C, number_of_overlap_masked_pixels
+
+
 def normxcorr2_masked(fixed_image, moving_image, fixed_mask, moving_mask):
     fixed_mask = np.where(fixed_mask <= 0, 0, 1)
     moving_mask = np.where(moving_mask <= 0, 0, 1)
