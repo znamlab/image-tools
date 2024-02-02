@@ -8,14 +8,43 @@ https://ieeexplore.ieee.org/document/6111478
 Translated from matlab code by D. Padfield using copilot.
 """
 
+from typing import Optional
 
 import numpy as np
-from scipy.fft import fft2, ifft2
+from scipy.fft import fft2, fftshift, ifft2
 
 
 def masked_translation_registration(
-    fixed_image, moving_image, fixed_mask, moving_mask, overlap_ratio=0.3
+    fixed_image: np.array,
+    moving_image: np.array,
+    fixed_mask: np.array,
+    moving_mask: np.array,
+    overlap_ratio: float = 0.3,
+    max_shift: Optional[int] = None,
+    min_shift: Optional[int] = None,
 ):
+    """Perform masked translation registration.
+
+    Based on the masked phase correlation method described in:
+    D. Padfield. Masked object registration in the Fourier domain.
+    IEEE Transactions on Image Processing, 21(5):2706–2718, 2012.
+    https://ieeexplore.ieee.org/document/6111478
+
+    Args:
+        fixed_image (np.array): The fixed image.
+        moving_image (np.array): The moving image.
+        fixed_mask (np.array): The fixed mask.
+        moving_mask (np.array): The moving mask.
+        overlap_ratio (float): The overlap ratio.
+        max_shift (int): Maximum allowed shift.
+        min_shift (int): Minimum allowed shift.
+
+    Returns:
+        tuple: The translation corresponding to the maximum correlation.
+        float: The maximum correlation
+        np.array: the cross-correlation
+        np.array: the number of overlap masked pixels at each shift.
+    """
     xcorr, number_of_overlap_masked_pixels = normxcorr2_masked(
         fixed_image, moving_image, fixed_mask, moving_mask
     )
@@ -26,18 +55,40 @@ def masked_translation_registration(
     number_of_pixels_threshold = overlap_ratio * np.max(number_of_overlap_masked_pixels)
     xcorr[number_of_overlap_masked_pixels < number_of_pixels_threshold] = 0
 
-    maxC = np.max(xcorr)
-    ypeak, xpeak = np.unravel_index(np.argmax(xcorr), xcorr.shape)
-    transform = [xpeak - image_size[1], ypeak - image_size[0]]
+    if max_shift:
+        xcorr[max_shift:-max_shift, :] = 0
+        xcorr[:, max_shift:-max_shift] = 0
+    if min_shift:
+        xcorr[:min_shift, :min_shift] = 0
+        xcorr[-min_shift:, -min_shift:] = 0
+        xcorr[-min_shift:, :min_shift] = 0
+        xcorr[:min_shift, -min_shift:] = 0
 
-    # Take the negative of the transform so that it has the correct sign.
-    transform = [-x for x in transform]
+    max_xcorr = np.max(xcorr)
+    xcorr = fftshift(xcorr)
+    number_of_overlap_masked_pixels = fftshift(number_of_overlap_masked_pixels)
 
-    return transform, maxC, xcorr, number_of_overlap_masked_pixels
+    shift = np.unravel_index(np.argmax(xcorr), image_size) - np.array(image_size) / 2
+
+    return shift, max_xcorr, xcorr, number_of_overlap_masked_pixels
 
 
 def normxcorr2_masked(fixed_image, moving_image, fixed_mask, moving_mask):
+    """Perform masked normalized cross-correlation.
 
+    This inner function calculates the masked normalized cross-correlation between two
+    images.
+
+    Args:
+        fixed_image (np.array): The fixed image.
+        moving_image (np.array): The moving image.
+        fixed_mask (np.array): The fixed mask.
+        moving_mask (np.array): The moving mask.
+
+    Returns:
+        np.array: The cross-correlation.
+        np.array: The number of overlap masked pixels at each shift.
+    """
     float_dtype = moving_image.dtype
     if not np.issubdtype(float_dtype, np.floating):
         # we probably have a boolean array. Use float32 for the FFTs.
@@ -60,16 +111,10 @@ def normxcorr2_masked(fixed_image, moving_image, fixed_mask, moving_mask):
     fixed_image_size = fixed_image.shape
     moving_image_size = rotated_moving_image.shape
     combined_size = np.add(fixed_image_size, moving_image_size) - 1
-
-    optimal_size = [
-        find_closest_valid_dimension(combined_size[0]),
-        find_closest_valid_dimension(combined_size[1]),
-    ]
-
-    fixed_fft = fft2(fixed_image, optimal_size)
-    rotated_moving_fft = fft2(rotated_moving_image, optimal_size)
-    fixed_mask_fft = fft2(fixed_mask, optimal_size)
-    rotated_moving_mask_fft = fft2(rotated_moving_mask, optimal_size)
+    fixed_fft = fft2(fixed_image)
+    rotated_moving_fft = fft2(rotated_moving_image)
+    fixed_mask_fft = fft2(fixed_mask)
+    rotated_moving_mask_fft = fft2(rotated_moving_mask)
 
     number_of_overlap_masked_pixels = ifft2(
         rotated_moving_mask_fft * fixed_mask_fft
@@ -92,16 +137,14 @@ def normxcorr2_masked(fixed_image, moving_image, fixed_mask, moving_mask):
         / number_of_overlap_masked_pixels
     )
 
-    fixed_squared_fft = fft2(fixed_image * fixed_image, optimal_size)
+    fixed_squared_fft = fft2(fixed_image * fixed_image)
     fixed_denom = (
         np.real(ifft2(rotated_moving_mask_fft * fixed_squared_fft))
         - np.power(mask_correlated_fixed_fft, 2) / number_of_overlap_masked_pixels
     )
     fixed_denom = np.maximum(fixed_denom, 0)
 
-    rotated_moving_squared_fft = fft2(
-        rotated_moving_image * rotated_moving_image, optimal_size
-    )
+    rotated_moving_squared_fft = fft2(rotated_moving_image * rotated_moving_image)
     moving_denom = (
         np.real(ifft2(fixed_mask_fft * rotated_moving_squared_fft))
         - np.power(mask_correlated_rotated_moving_fft, 2)
@@ -126,35 +169,37 @@ def normxcorr2_masked(fixed_image, moving_image, fixed_mask, moving_mask):
     return xcorr, number_of_overlap_masked_pixels
 
 
-def find_closest_valid_dimension(n):
-    new_number = n
-    result = 0
-    new_number -= 1
-    while result != 1:
-        new_number += 1
-        result = factorize_number(new_number)
-    return new_number
+def transform_image_translation(
+    moving_image: np.array, shifts: tuple, fixed_image_size: Optional[tuple] = None
+):
+    """Transform an image using a translation.
+
+    Simple translation of an image. This will round the transform to the closest pixel
+
+    If fixed_image_size is not None, the moving image will be transformed to this size.
 
 
-def factorize_number(n):
-    for ifac in [2, 3, 5]:
-        while n % ifac == 0:
-            n /= ifac
-    return n
+    Args:
+        moving_image (np.array): The image to transform.
+        shifts (tuple): The translation in row(y)/column(x).
+        fixed_image_size (tuple): The size of the fixed image.
 
+    Returns:
+        np.array: The transformed image.
+    """
+    shifts = np.round([-shifts[1], shifts[0]]).astype(int)
 
-def transform_image_translation(moving_image, transform, fixed_image_size=None):
     if fixed_image_size is None:
         fixed_image_size = moving_image.shape
 
     moving_image_size = moving_image.shape
 
-    x = np.arange(1, fixed_image_size[1] + 1) + transform[0]
+    x = np.arange(1, fixed_image_size[1] + 1) + shifts[0]
     border_indices_x = np.where((x < 1) | (x > moving_image_size[1]))
     np.where((x >= 1) & (x <= moving_image_size[1]))
     x[border_indices_x] = 1
 
-    y = np.arange(1, fixed_image_size[0] + 1) + transform[1]
+    y = np.arange(1, fixed_image_size[0] + 1) + shifts[1]
     border_indices_y = np.where((y < 1) | (y > moving_image_size[0]))
     np.where((y >= 1) & (y <= moving_image_size[0]))
     y[border_indices_y] = 1
