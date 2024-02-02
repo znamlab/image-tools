@@ -58,6 +58,7 @@ instance/
 
 # Sphinx documentation
 docs/_build/
+docs/source/api_generated/
 
 # MkDocs documentation
 /site/
