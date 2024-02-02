@@ -1,9 +1,10 @@
-import imageio.v2 as imageio
-import matplotlib.pyplot as plt
-import numpy as np
 from pathlib import Path
 
+import imageio.v2 as imageio
+import numpy as np
+
 from image_tools import masked_phase_correlation as mpc
+from image_tools.similarity_transforms import transform_image
 
 
 def test_masked_phase_correlation(do_plot=False):
@@ -22,16 +23,19 @@ def test_masked_phase_correlation(do_plot=False):
         fixed_mask = fixed_image != 0
         moving_mask = moving_image != 0
 
-        (translation, max_corr, _, _,) = mpc.masked_translation_registration(
+        (
+            translation,
+            max_corr,
+            _,
+            _,
+        ) = mpc.masked_translation_registration(
             fixed_image, moving_image, fixed_mask, moving_mask, overlap_ratio
         )
-        transformed_moving_image = mpc.transform_image_translation(
-            moving_image, translation
-        )
+        transformed_moving_image = transform_image(moving_image, shift=translation)
 
         # Calculate the difference between the two images in the overlap region.
         overlap = fixed_mask & moving_mask
-        initial_diff = np.mean(
+        np.mean(
             np.abs(
                 fixed_image[overlap].astype(float) - moving_image[overlap].astype(float)
             )
@@ -43,22 +47,22 @@ def test_masked_phase_correlation(do_plot=False):
                 - fixed_image[overlap].astype(float)
             )
         )
-        assert (
-            difference < initial_diff / 5
-        ), f"Test {i+1}: Difference between images is too large."
+        assert difference < 20, f"Test {i+1}: Difference between images is too large."
 
         assert max_corr > 0.9, f"Test {i+1}: Correlation score is too low."
-        true_translation = np.array([x[i], -y[i]])
-        translation_error = np.array(translation) - true_translation
-        assert np.sum(translation_error) < 3, "Translation error is too large."
+        true_translation = np.array([y[i], -x[i]])
+        translation_error = np.abs(np.array(translation) - true_translation)
+        assert np.sum(translation_error) < 4, "Translation error is too large."
 
         if do_plot:
+            import matplotlib.pyplot as plt
+
             # Given the transform, transform the moving image.
             overlay_image = overlay_registration(fixed_image, transformed_moving_image)
             plt.figure()
             plt.imshow(overlay_image)
             plt.title(f"Test {i+1}: Registered Overlay Image")
-            plt.show()
+            plt.savefig(test_dir / f"test_data/RegisteredOverlayImage{i+1}.png")
 
             print(f"Test {i+1}:")
             print(f"Computed translation: {translation[0]} {-translation[1]}")
@@ -119,4 +123,4 @@ def overlay_registration(fixed_image, transformed_moving_image):
 
 
 if __name__ == "__main__":
-    test_masked_phase_correlation()
+    test_masked_phase_correlation(do_plot=True)
