@@ -2,7 +2,7 @@ API
 ===
 
 Similarity transformation
----------
+-------------------------
 
 .. currentmodule:: image_tools.similarity_transforms
 
