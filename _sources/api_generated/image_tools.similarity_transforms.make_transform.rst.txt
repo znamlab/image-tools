@@ -1,0 +1,6 @@
+﻿image\_tools.similarity\_transforms.make\_transform
+===================================================
+
+.. currentmodule:: image_tools.similarity_transforms
+
+.. autofunction:: make_transform

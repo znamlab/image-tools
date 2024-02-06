@@ -1,0 +1,6 @@
+﻿image\_tools.registration.masked\_phase\_correlation.masked\_translation\_registration
+======================================================================================
+
+.. currentmodule:: image_tools.registration.masked_phase_correlation
+
+.. autofunction:: masked_translation_registration
