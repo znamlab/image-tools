@@ -15,7 +15,7 @@ import numpy.typing as npt
 from scipy.fft import fft2, fftshift, ifft2  # type: ignore
 
 
-def masked_translation_registration(
+def masked_phase_correlation(
     fixed_image: npt.NDArray,
     moving_image: npt.NDArray,
     fixed_mask: npt.NDArray,
@@ -55,7 +55,7 @@ def masked_translation_registration(
         npt.NDArray: the cross-correlation
         npt.NDArray: the number of overlap masked pixels at each shift.
     """
-    xcorr, number_of_overlap_masked_pixels = normxcorr2_masked(
+    xcorr, number_of_overlap_masked_pixels = _normxcorr2_masked(
         fixed_image,
         moving_image,
         fixed_mask,
@@ -89,7 +89,7 @@ def masked_translation_registration(
     return shift, max_xcorr, xcorr, number_of_overlap_masked_pixels
 
 
-def normxcorr2_masked(
+def _normxcorr2_masked(
     fixed_image: npt.NDArray,
     moving_image: npt.NDArray,
     fixed_mask: npt.NDArray,

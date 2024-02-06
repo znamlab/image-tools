@@ -4,7 +4,7 @@ import imageio.v2 as imageio
 import numpy as np
 import pytest
 
-from image_tools.registration import masked_phase_correlation as mpc
+from image_tools.registration import phase_correlation as mpc
 from image_tools.similarity_transforms import transform_image
 
 
@@ -29,7 +29,7 @@ def test_masked_phase_correlation(do_plot=False):
             max_corr,
             xcorr,
             novlp,
-        ) = mpc.masked_translation_registration(
+        ) = mpc.masked_phase_correlation(
             fixed_image, moving_image, fixed_mask, moving_mask, overlap_ratio
         )
         transformed_moving_image = transform_image(moving_image, shift=translation)
@@ -79,7 +79,7 @@ def test_masked_phase_correlation(do_plot=False):
         max_corr,
         xcorr,
         novlp,
-    ) = mpc.masked_translation_registration(
+    ) = mpc.masked_phase_correlation(
         fixed_image, moving_image, fixed_mask, moving_mask, overlap_ratio
     )
     fixed_fft = mpc.fft2(fixed_image.astype(float))
@@ -90,7 +90,7 @@ def test_masked_phase_correlation(do_plot=False):
         max_corr_prefft,
         xcorr_prefft,
         novlp_prefft,
-    ) = mpc.masked_translation_registration(
+    ) = mpc.masked_phase_correlation(
         fixed_fft,
         moving_image,
         fixed_mask_fft,
@@ -111,7 +111,7 @@ def test_masked_phase_correlation(do_plot=False):
         max_corr_prefft,
         xcorr_prefft,
         novlp_prefft,
-    ) = mpc.masked_translation_registration(
+    ) = mpc.masked_phase_correlation(
         fixed_fft,
         moving_image,
         fixed_mask,
@@ -127,7 +127,7 @@ def test_masked_phase_correlation(do_plot=False):
 
     # cannot run if fixed_image_is_fft is True and fixed_squared_fft is not provided
     with pytest.raises(AssertionError):
-        _ = mpc.masked_translation_registration(
+        _ = mpc.masked_phase_correlation(
             fixed_fft,
             moving_image,
             fixed_mask_fft,
@@ -138,7 +138,7 @@ def test_masked_phase_correlation(do_plot=False):
         )
     # cannot run if fixed_mask_is_fft is True and fixed_image_is_fft is False
     with pytest.raises(AssertionError):
-        _ = mpc.masked_translation_registration(
+        _ = mpc.masked_phase_correlation(
             fixed_image,
             moving_image,
             fixed_mask_fft,
