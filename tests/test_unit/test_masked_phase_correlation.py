@@ -2,6 +2,7 @@ from pathlib import Path
 
 import imageio.v2 as imageio
 import numpy as np
+import pytest
 
 from image_tools.registration import masked_phase_correlation as mpc
 from image_tools.similarity_transforms import transform_image
@@ -26,8 +27,8 @@ def test_masked_phase_correlation(do_plot=False):
         (
             translation,
             max_corr,
-            _,
-            _,
+            xcorr,
+            novlp,
         ) = mpc.masked_translation_registration(
             fixed_image, moving_image, fixed_mask, moving_mask, overlap_ratio
         )
@@ -71,6 +72,80 @@ def test_masked_phase_correlation(do_plot=False):
                 f"Transformation error: {translation_error[0]} {translation_error[1]}"
             )
             print(" ")
+
+    # test that precomputed ffts give the same result
+    (
+        translation,
+        max_corr,
+        xcorr,
+        novlp,
+    ) = mpc.masked_translation_registration(
+        fixed_image, moving_image, fixed_mask, moving_mask, overlap_ratio
+    )
+    fixed_fft = mpc.fft2(fixed_image.astype(float))
+    fixed_mask_fft = mpc.fft2(fixed_mask.astype(float))
+    fixed_squared_fft = mpc.fft2(fixed_image.astype(float) * fixed_image.astype(float))
+    (
+        translation_prefft,
+        max_corr_prefft,
+        xcorr_prefft,
+        novlp_prefft,
+    ) = mpc.masked_translation_registration(
+        fixed_fft,
+        moving_image,
+        fixed_mask_fft,
+        moving_mask,
+        overlap_ratio,
+        fixed_image_is_fft=True,
+        fixed_mask_is_fft=True,
+        fixed_squared_fft=fixed_squared_fft,
+    )
+    assert np.allclose(translation, translation_prefft)
+    assert np.allclose(max_corr, max_corr_prefft)
+    assert (xcorr - xcorr_prefft).max() < 1e-4
+    assert np.allclose(novlp, novlp_prefft)
+
+    # works if we give only the fft of the fixed image
+    (
+        translation_prefft,
+        max_corr_prefft,
+        xcorr_prefft,
+        novlp_prefft,
+    ) = mpc.masked_translation_registration(
+        fixed_fft,
+        moving_image,
+        fixed_mask,
+        moving_mask,
+        overlap_ratio,
+        fixed_image_is_fft=True,
+        fixed_squared_fft=fixed_squared_fft,
+    )
+    assert np.allclose(translation, translation_prefft)
+    assert np.allclose(max_corr, max_corr_prefft)
+    assert (xcorr - xcorr_prefft).max() < 1e-4
+    assert np.allclose(novlp, novlp_prefft)
+
+    # cannot run if fixed_image_is_fft is True and fixed_squared_fft is not provided
+    with pytest.raises(AssertionError):
+        _ = mpc.masked_translation_registration(
+            fixed_fft,
+            moving_image,
+            fixed_mask_fft,
+            moving_mask,
+            overlap_ratio,
+            fixed_image_is_fft=True,
+            fixed_mask_is_fft=True,
+        )
+    # cannot run if fixed_mask_is_fft is True and fixed_image_is_fft is False
+    with pytest.raises(AssertionError):
+        _ = mpc.masked_translation_registration(
+            fixed_image,
+            moving_image,
+            fixed_mask_fft,
+            moving_mask,
+            overlap_ratio,
+            fixed_mask_is_fft=True,
+        )
 
 
 def overlay_registration(fixed_image, transformed_moving_image):

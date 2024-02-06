@@ -23,7 +23,10 @@ def masked_translation_registration(
     overlap_ratio: float = 0.3,
     max_shift: Optional[int] = None,
     min_shift: Optional[int] = None,
-):
+    fixed_image_is_fft: bool = False,
+    fixed_mask_is_fft: bool = False,
+    fixed_squared_fft: Optional[npt.NDArray] = None,
+) -> tuple[tuple, float, npt.NDArray, npt.NDArray]:
     """Perform masked translation registration.
 
     Based on the masked phase correlation method described in:
@@ -36,9 +39,15 @@ def masked_translation_registration(
         moving_image (npt.NDArray): The moving image.
         fixed_mask (npt.NDArray): The fixed mask.
         moving_mask (npt.NDArray): The moving mask.
-        overlap_ratio (float): The overlap ratio.
-        max_shift (int): Maximum allowed shift.
-        min_shift (int): Minimum allowed shift.
+        overlap_ratio (float, optional): The overlap ratio. Defaults to 0.3.
+        max_shift (int, optional): Maximum allowed shift. Defaults to None.
+        min_shift (int, optional): Minimum allowed shift. Defaults to None.
+        fixed_image_is_fft (bool, optional): Whether the fixed image is already in the
+            Fourier domain. Defaults to False.
+        fixed_mask_is_fft (bool, optional): Whether the fixed mask is already in the
+            Fourier domain. Defaults to False.
+        fixed_image_squared_fft (npt.NDArray, optional): The squared Fourier transform
+            of the fixed image. Defaults to None.
 
     Returns:
         tuple: The translation corresponding to the maximum correlation.
@@ -47,7 +56,13 @@ def masked_translation_registration(
         npt.NDArray: the number of overlap masked pixels at each shift.
     """
     xcorr, number_of_overlap_masked_pixels = normxcorr2_masked(
-        fixed_image, moving_image, fixed_mask, moving_mask
+        fixed_image,
+        moving_image,
+        fixed_mask,
+        moving_mask,
+        fixed_image_is_fft,
+        fixed_mask_is_fft,
+        fixed_squared_fft,
     )
 
     image_size = moving_image.shape
@@ -74,7 +89,15 @@ def masked_translation_registration(
     return shift, max_xcorr, xcorr, number_of_overlap_masked_pixels
 
 
-def normxcorr2_masked(fixed_image, moving_image, fixed_mask, moving_mask):
+def normxcorr2_masked(
+    fixed_image: npt.NDArray,
+    moving_image: npt.NDArray,
+    fixed_mask: npt.NDArray,
+    moving_mask: npt.NDArray,
+    fixed_image_is_fft: bool = False,
+    fixed_mask_is_fft: bool = False,
+    fixed_squared_fft: Optional[npt.NDArray] = None,
+) -> tuple[npt.NDArray, npt.NDArray]:
     """Perform masked normalized cross-correlation.
 
     This inner function calculates the masked normalized cross-correlation between two
@@ -85,6 +108,11 @@ def normxcorr2_masked(fixed_image, moving_image, fixed_mask, moving_mask):
         moving_image (np.array): The moving image.
         fixed_mask (np.array): The fixed mask.
         moving_mask (np.array): The moving mask.
+        fixed_image_is_fft (bool): Whether the fixed image is already in the Fourier
+            domain.
+        fixed_mask_is_fft (bool): Whether the fixed mask is already in the Fourier
+            domain.
+        fixed_squared_fft (np.array): The squared Fourier transform of the fixed image.
 
     Returns:
         np.array: The cross-correlation.
@@ -95,27 +123,41 @@ def normxcorr2_masked(fixed_image, moving_image, fixed_mask, moving_mask):
         # we probably have a boolean array. Use float32 for the FFTs.
         float_dtype = np.float32
 
-    fixed_image = fixed_image.astype(float_dtype)
-    moving_image = moving_image.astype(float_dtype)
-    fixed_mask = fixed_mask.astype(float_dtype)
-    moving_mask = moving_mask.astype(float_dtype)
+    if fixed_mask_is_fft:
+        assert (
+            fixed_image_is_fft
+        ), "If fixed_mask_is_fft is True, fixed_image_is_fft must also be True"
+        fixed_mask_fft = fixed_mask
+    else:
+        fixed_mask = fixed_mask.astype(float_dtype)
+        fixed_mask = np.where(fixed_mask <= 0, 0, 1)
+        fixed_mask_fft = fft2(fixed_mask)
 
-    fixed_mask = np.where(fixed_mask <= 0, 0, 1)
+    if fixed_image_is_fft:
+        assert (
+            fixed_squared_fft is not None
+        ), "If fixed_image_is_fft is True, fixed_image_squared_fft must be provided"
+        fixed_fft = fixed_image
+    else:
+        fixed_image = fixed_image.astype(float_dtype)
+        fixed_image = np.where(fixed_mask == 0, 0, fixed_image)
+        fixed_fft = fft2(fixed_image)
+
+    if fixed_squared_fft is None:
+        fixed_squared_fft = fft2(fixed_image * fixed_image)
+
+    moving_image = moving_image.astype(float_dtype)
+    moving_mask = moving_mask.astype(float_dtype)
     moving_mask = np.where(moving_mask <= 0, 0, 1)
 
-    fixed_image = np.where(fixed_mask == 0, 0, fixed_image)
     moving_image = np.where(moving_mask == 0, 0, moving_image)
 
     rotated_moving_image = np.rot90(moving_image, 2)
     rotated_moving_mask = np.rot90(moving_mask, 2)
 
-    fixed_image_size = fixed_image.shape
-    moving_image_size = rotated_moving_image.shape
-    combined_size = np.add(fixed_image_size, moving_image_size) - 1
-    fixed_fft = fft2(fixed_image)
     rotated_moving_fft = fft2(rotated_moving_image)
-    fixed_mask_fft = fft2(fixed_mask)
     rotated_moving_mask_fft = fft2(rotated_moving_mask)
+    rotated_moving_squared_fft = fft2(rotated_moving_image * rotated_moving_image)
 
     number_of_overlap_masked_pixels = ifft2(
         rotated_moving_mask_fft * fixed_mask_fft
@@ -138,14 +180,12 @@ def normxcorr2_masked(fixed_image, moving_image, fixed_mask, moving_mask):
         / number_of_overlap_masked_pixels
     )
 
-    fixed_squared_fft = fft2(fixed_image * fixed_image)
     fixed_denom = (
         np.real(ifft2(rotated_moving_mask_fft * fixed_squared_fft))
         - np.power(mask_correlated_fixed_fft, 2) / number_of_overlap_masked_pixels
     )
     fixed_denom = np.maximum(fixed_denom, 0)
 
-    rotated_moving_squared_fft = fft2(rotated_moving_image * rotated_moving_image)
     moving_denom = (
         np.real(ifft2(fixed_mask_fft * rotated_moving_squared_fft))
         - np.power(mask_correlated_rotated_moving_fft, 2)
@@ -161,10 +201,5 @@ def normxcorr2_masked(fixed_image, moving_image, fixed_mask, moving_mask):
     xcorr[i_nonzero] = numerator[i_nonzero] / denom[i_nonzero]
     xcorr = np.where(xcorr < -1, -1, xcorr)
     xcorr = np.where(xcorr > 1, 1, xcorr)
-
-    xcorr = xcorr[0 : combined_size[0], 0 : combined_size[1]]
-    number_of_overlap_masked_pixels = number_of_overlap_masked_pixels[
-        0 : combined_size[0], 0 : combined_size[1]
-    ]
 
     return xcorr, number_of_overlap_masked_pixels
