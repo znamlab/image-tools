@@ -15,6 +15,61 @@ import numpy.typing as npt
 from scipy.fft import fft2, fftshift, ifft2  # type: ignore
 
 
+def phase_corr(
+    reference: npt.NDArray,
+    target: npt.NDArray,
+    max_shift: Optional[int] = None,
+    min_shift: Optional[int] = None,
+    whiten: Optional[int] = True,
+    fft_ref: Optional[int] = True,
+) -> tuple[npt.NDArray, npt.NDArray]:
+    """
+    Compute phase correlation of two images.
+
+    Args:
+        reference (numpy.ndarray): reference image
+        target (numpy.ndarray): target image
+        max_shift (int, optional): the range over which to search for the maximum of the
+            cross-correlogram. Defaults to None.
+        min_shift (int, optional): the range over which to search for the minimum of the
+            cross-correlogram. Defaults to None.
+        whiten (bool, optional): whether or not to whiten the FFTs of the images.
+            If True, the method performs phase correlation, otherwise cross correlation
+            is performed. Defaults to True.
+        fft_ref (bool, optional): whether to compute the FFT transform of the reference
+            image. Defaults to True.
+
+    Returns:
+        shift: numpy.array of the location of the peak of the cross-correlogram
+        xcorr: numpy.ndarray of the cross-correlagram itself.
+
+    """
+    if fft_ref:
+        f1 = fft2(reference)
+    else:
+        f1 = reference
+    f2 = fft2(target)
+    if whiten:
+        f1 = f1 / np.abs(f1)
+        f2 = f2 / np.abs(f2)
+    xcorr = np.abs(ifft2(f1 * np.conj(f2)))
+    if max_shift:
+        xcorr[max_shift:-max_shift, :] = 0
+        xcorr[:, max_shift:-max_shift] = 0
+    if min_shift:
+        xcorr[:min_shift, :min_shift] = 0
+        xcorr[-min_shift:, -min_shift:] = 0
+        xcorr[-min_shift:, :min_shift] = 0
+        xcorr[:min_shift, -min_shift:] = 0
+    xcorr = fftshift(xcorr)
+
+    shift = (
+        np.unravel_index(np.argmax(xcorr), reference.shape)
+        - np.array(reference.shape) / 2
+    )
+    return shift, xcorr
+
+
 def masked_phase_correlation(
     fixed_image: npt.NDArray,
     moving_image: npt.NDArray,
