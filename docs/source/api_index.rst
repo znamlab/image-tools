@@ -10,7 +10,7 @@ Registration
     :toctree: api_generated
     :template: function.rst
 
-    masked_phase_correlation.masked_translation_registration
+    phase_correlation.phase_correlation
 
 Similarity transformation
 -------------------------

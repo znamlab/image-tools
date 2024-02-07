@@ -1,1 +1,1 @@
-from . import masked_phase_correlation
+from . import phase_correlation
