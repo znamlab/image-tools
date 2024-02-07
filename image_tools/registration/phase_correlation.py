@@ -56,8 +56,8 @@ def phase_correlation(
     Returns:
         tuple: The translation corresponding to the maximum correlation.
         float: The maximum correlation
-        npt.NDArray: the cross-correlation
-        npt.NDArray: the number of overlap masked pixels at each shift.
+        npt.NDArray: the full cross-correlation
+        npt.NDArray: the number of overlap pixels at each shift.
     """
     float_dtype = moving_image.dtype
     if not np.issubdtype(float_dtype, np.floating):
