@@ -8,6 +8,29 @@ from image_tools.registration import phase_correlation as mpc
 from image_tools.similarity_transforms import transform_image
 
 
+def test_phase_correlation():
+    # test the simple, non-masked phase correlation
+    # create a simple image and a shifted version of it
+    big_image = np.zeros((200, 200), dtype="uint8")
+    square = [[100, 80], [50, 50], [100, 150], [120, 120]]
+    for row, col in square:
+        big_image[row : row + 10, col : col + 10] = 255
+    # add gaussian noise to the image
+    big_image = big_image + np.abs(np.random.normal(0, 2, big_image.shape)).astype(
+        "uint8"
+    )
+    image = big_image[50:, 20:]
+    shifted_image = big_image[:-50, :-20]
+
+    # calculate the phase correlation
+    translation, max_corr, xcorr, novlp = mpc.phase_correlation(image, shifted_image)
+    # check the result
+    assert np.allclose(translation, [-50, -20])
+    assert max_corr > 0.4
+    assert np.all(novlp == image.size)
+    assert np.isnan(xcorr).any() is False
+
+
 def test_masked_phase_correlation(do_plot=False):
     # Perform the registration on several sets of images.
     x = [75, -130, 130]
@@ -29,7 +52,7 @@ def test_masked_phase_correlation(do_plot=False):
             max_corr,
             xcorr,
             novlp,
-        ) = mpc.masked_phase_correlation(
+        ) = mpc.phase_correlation(
             fixed_image, moving_image, fixed_mask, moving_mask, overlap_ratio
         )
         transformed_moving_image = transform_image(moving_image, shift=translation)
@@ -79,7 +102,7 @@ def test_masked_phase_correlation(do_plot=False):
         max_corr,
         xcorr,
         novlp,
-    ) = mpc.masked_phase_correlation(
+    ) = mpc.phase_correlation(
         fixed_image, moving_image, fixed_mask, moving_mask, overlap_ratio
     )
     fixed_fft = mpc.fft2(fixed_image.astype(float))
@@ -90,7 +113,7 @@ def test_masked_phase_correlation(do_plot=False):
         max_corr_prefft,
         xcorr_prefft,
         novlp_prefft,
-    ) = mpc.masked_phase_correlation(
+    ) = mpc.phase_correlation(
         fixed_fft,
         moving_image,
         fixed_mask_fft,
@@ -111,7 +134,7 @@ def test_masked_phase_correlation(do_plot=False):
         max_corr_prefft,
         xcorr_prefft,
         novlp_prefft,
-    ) = mpc.masked_phase_correlation(
+    ) = mpc.phase_correlation(
         fixed_fft,
         moving_image,
         fixed_mask,
@@ -127,7 +150,7 @@ def test_masked_phase_correlation(do_plot=False):
 
     # cannot run if fixed_image_is_fft is True and fixed_squared_fft is not provided
     with pytest.raises(AssertionError):
-        _ = mpc.masked_phase_correlation(
+        _ = mpc.phase_correlation(
             fixed_fft,
             moving_image,
             fixed_mask_fft,
@@ -138,7 +161,7 @@ def test_masked_phase_correlation(do_plot=False):
         )
     # cannot run if fixed_mask_is_fft is True and fixed_image_is_fft is False
     with pytest.raises(AssertionError):
-        _ = mpc.masked_phase_correlation(
+        _ = mpc.phase_correlation(
             fixed_image,
             moving_image,
             fixed_mask_fft,
@@ -198,4 +221,5 @@ def overlay_registration(fixed_image, transformed_moving_image):
 
 
 if __name__ == "__main__":
+    test_phase_correlation()
     test_masked_phase_correlation(do_plot=True)

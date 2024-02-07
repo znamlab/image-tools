@@ -15,69 +15,15 @@ import numpy.typing as npt
 from scipy.fft import fft2, fftshift, ifft2  # type: ignore
 
 
-def phase_corr(
-    reference: npt.NDArray,
-    target: npt.NDArray,
-    max_shift: Optional[int] = None,
-    min_shift: Optional[int] = None,
-    whiten: Optional[int] = True,
-    fft_ref: Optional[int] = True,
-) -> tuple[npt.NDArray, npt.NDArray]:
-    """
-    Compute phase correlation of two images.
-
-    Args:
-        reference (numpy.ndarray): reference image
-        target (numpy.ndarray): target image
-        max_shift (int, optional): the range over which to search for the maximum of the
-            cross-correlogram. Defaults to None.
-        min_shift (int, optional): the range over which to search for the minimum of the
-            cross-correlogram. Defaults to None.
-        whiten (bool, optional): whether or not to whiten the FFTs of the images.
-            If True, the method performs phase correlation, otherwise cross correlation
-            is performed. Defaults to True.
-        fft_ref (bool, optional): whether to compute the FFT transform of the reference
-            image. Defaults to True.
-
-    Returns:
-        shift: numpy.array of the location of the peak of the cross-correlogram
-        xcorr: numpy.ndarray of the cross-correlagram itself.
-
-    """
-    if fft_ref:
-        f1 = fft2(reference)
-    else:
-        f1 = reference
-    f2 = fft2(target)
-    if whiten:
-        f1 = f1 / np.abs(f1)
-        f2 = f2 / np.abs(f2)
-    xcorr = np.abs(ifft2(f1 * np.conj(f2)))
-    if max_shift:
-        xcorr[max_shift:-max_shift, :] = 0
-        xcorr[:, max_shift:-max_shift] = 0
-    if min_shift:
-        xcorr[:min_shift, :min_shift] = 0
-        xcorr[-min_shift:, -min_shift:] = 0
-        xcorr[-min_shift:, :min_shift] = 0
-        xcorr[:min_shift, -min_shift:] = 0
-    xcorr = fftshift(xcorr)
-
-    shift = (
-        np.unravel_index(np.argmax(xcorr), reference.shape)
-        - np.array(reference.shape) / 2
-    )
-    return shift, xcorr
-
-
-def masked_phase_correlation(
+def phase_correlation(
     fixed_image: npt.NDArray,
     moving_image: npt.NDArray,
-    fixed_mask: npt.NDArray,
-    moving_mask: npt.NDArray,
+    fixed_mask: Optional[npt.NDArray] = None,
+    moving_mask: Optional[npt.NDArray] = None,
     overlap_ratio: float = 0.3,
     max_shift: Optional[int] = None,
     min_shift: Optional[int] = None,
+    whiten: bool = True,
     fixed_image_is_fft: bool = False,
     fixed_mask_is_fft: bool = False,
     fixed_squared_fft: Optional[npt.NDArray] = None,
@@ -92,11 +38,14 @@ def masked_phase_correlation(
     Args:
         fixed_image (npt.NDArray): The fixed image.
         moving_image (npt.NDArray): The moving image.
-        fixed_mask (npt.NDArray): The fixed mask.
-        moving_mask (npt.NDArray): The moving mask.
+        fixed_mask (npt.NDArray, optional): The fixed mask. Defaults to None.
+        moving_mask (npt.NDArray, optional): The moving mask. Defaults to None.
         overlap_ratio (float, optional): The overlap ratio. Defaults to 0.3.
         max_shift (int, optional): Maximum allowed shift. Defaults to None.
         min_shift (int, optional): Minimum allowed shift. Defaults to None.
+        whiten (bool, optional): Whether to whiten the FFTs of the images. If True, the
+            method performs phase correlation, otherwise cross correlation is performed.
+            Used only for non-masked phase correlation. Defaults to True.
         fixed_image_is_fft (bool, optional): Whether the fixed image is already in the
             Fourier domain. Defaults to False.
         fixed_mask_is_fft (bool, optional): Whether the fixed mask is already in the
@@ -110,15 +59,33 @@ def masked_phase_correlation(
         npt.NDArray: the cross-correlation
         npt.NDArray: the number of overlap masked pixels at each shift.
     """
-    xcorr, number_of_overlap_masked_pixels = _normxcorr2_masked(
-        fixed_image,
-        moving_image,
-        fixed_mask,
-        moving_mask,
-        fixed_image_is_fft,
-        fixed_mask_is_fft,
-        fixed_squared_fft,
-    )
+    float_dtype = moving_image.dtype
+    if not np.issubdtype(float_dtype, np.floating):
+        # we probably have a boolean array. Use float32 for the FFTs.
+        float_dtype = np.float32
+
+    if fixed_mask is None:
+        # perform non-masked phase correlation
+        xcorr = _simple_phase_corr(
+            fixed_image,
+            moving_image,
+            whiten,
+            not fixed_image_is_fft,
+            float_dtype,
+        )
+        number_of_overlap_masked_pixels = np.ones_like(xcorr, dtype=int) * xcorr.size
+    else:
+        assert moving_mask is not None, "moving_mask must be provided"
+        xcorr, number_of_overlap_masked_pixels = _normxcorr2_masked(
+            fixed_image,
+            moving_image,
+            fixed_mask,
+            moving_mask,
+            fixed_image_is_fft,
+            fixed_mask_is_fft,
+            fixed_squared_fft,
+            float_dtype,
+        )
 
     image_size = moving_image.shape
 
@@ -152,6 +119,7 @@ def _normxcorr2_masked(
     fixed_image_is_fft: bool = False,
     fixed_mask_is_fft: bool = False,
     fixed_squared_fft: Optional[npt.NDArray] = None,
+    float_dtype: Optional[np.dtype] = np.float32,
 ) -> tuple[npt.NDArray, npt.NDArray]:
     """Perform masked normalized cross-correlation.
 
@@ -168,15 +136,13 @@ def _normxcorr2_masked(
         fixed_mask_is_fft (bool): Whether the fixed mask is already in the Fourier
             domain.
         fixed_squared_fft (np.array): The squared Fourier transform of the fixed image.
+        float_dtype (np.dtype, optional): The dtype to use for the FFTs. Defaults to
+            np.float32.
 
     Returns:
         np.array: The cross-correlation.
         np.array: The number of overlap masked pixels at each shift.
     """
-    float_dtype = moving_image.dtype
-    if not np.issubdtype(float_dtype, np.floating):
-        # we probably have a boolean array. Use float32 for the FFTs.
-        float_dtype = np.float32
 
     if fixed_mask_is_fft:
         assert (
@@ -258,3 +224,48 @@ def _normxcorr2_masked(
     xcorr = np.where(xcorr > 1, 1, xcorr)
 
     return xcorr, number_of_overlap_masked_pixels
+
+
+def _simple_phase_corr(
+    reference: npt.NDArray,
+    target: npt.NDArray,
+    whiten: Optional[int] = True,
+    fft_ref: Optional[int] = True,
+    float_dtype: Optional[np.dtype] = np.float32,
+) -> npt.NDArray:
+    """
+    Compute phase correlation of two images.
+
+    Args:
+        reference (numpy.ndarray): reference image
+        target (numpy.ndarray): target image
+        max_shift (int, optional): the range over which to search for the maximum of the
+            cross-correlogram. Defaults to None.
+        min_shift (int, optional): the range over which to search for the minimum of the
+            cross-correlogram. Defaults to None.
+        whiten (bool, optional): whether or not to whiten the FFTs of the images.
+            If True, the method performs phase correlation, otherwise cross correlation
+            is performed. Defaults to True.
+        fft_ref (bool, optional): whether to compute the FFT transform of the reference
+            image. Defaults to True.
+        float_dtype (np.dtype, optional): The dtype to use for the FFTs. Defaults to
+            np.float32.
+
+    Returns:
+        xcorr: numpy.ndarray of the cross-correlagram itself.
+
+    """
+    if fft_ref:
+        f1 = fft2(reference.astype(float_dtype))
+    else:
+        assert np.iscomplexobj(reference), (
+            "`reference` must be complex if fft_ref is False",
+        )
+        f1 = reference
+    f2 = fft2(target.astype(float_dtype))
+    if whiten:
+        f1 = f1 / np.abs(f1)
+        f2 = f2 / np.abs(f2)
+    xcorr = np.abs(ifft2(f1 * np.conj(f2)))
+
+    return xcorr
