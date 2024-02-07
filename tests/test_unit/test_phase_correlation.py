@@ -28,7 +28,7 @@ def test_phase_correlation():
     assert np.allclose(translation, [-50, -20])
     assert max_corr > 0.4
     assert np.all(novlp == image.size)
-    assert np.isnan(xcorr).any() is False
+    assert not np.isnan(xcorr).any()
 
 
 def test_masked_phase_correlation(do_plot=False):
