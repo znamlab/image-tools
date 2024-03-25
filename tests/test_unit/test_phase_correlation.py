@@ -4,7 +4,8 @@ import imageio.v2 as imageio
 import numpy as np
 import pytest
 
-from image_tools.registration import phase_correlation as mpc
+import image_tools.registration._phase_correlation as mpc
+from image_tools.registration import phase_correlation
 from image_tools.similarity_transforms import transform_image
 
 
@@ -23,7 +24,7 @@ def test_phase_correlation():
     shifted_image = big_image[:-50, :-20]
 
     # calculate the phase correlation
-    translation, max_corr, xcorr, novlp = mpc.phase_correlation(image, shifted_image)
+    translation, max_corr, xcorr, novlp = phase_correlation(image, shifted_image)
     # check the result
     assert np.allclose(translation, [-50, -20])
     assert max_corr > 0.4
@@ -52,7 +53,7 @@ def test_masked_phase_correlation(do_plot=False):
             max_corr,
             xcorr,
             novlp,
-        ) = mpc.phase_correlation(
+        ) = phase_correlation(
             fixed_image, moving_image, fixed_mask, moving_mask, overlap_ratio
         )
         transformed_moving_image = transform_image(moving_image, shift=translation)
@@ -102,7 +103,7 @@ def test_masked_phase_correlation(do_plot=False):
         max_corr,
         xcorr,
         novlp,
-    ) = mpc.phase_correlation(
+    ) = phase_correlation(
         fixed_image, moving_image, fixed_mask, moving_mask, overlap_ratio
     )
     fixed_fft = mpc.fft2(fixed_image.astype(float))
