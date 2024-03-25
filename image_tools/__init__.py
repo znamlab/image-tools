@@ -6,4 +6,4 @@ except PackageNotFoundError:
     # package is not installed
     pass
 
-from . import similarity_transforms, registration
+from . import similarity_transforms, registration, io
