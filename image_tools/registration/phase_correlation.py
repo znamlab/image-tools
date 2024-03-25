@@ -286,6 +286,8 @@ def get_mask_and_ffts(image, mask=None, float_dtype=None):
     if mask is None:
         mask = image.astype(float_dtype)
         mask = np.where(mask <= 0, 0, 1)
+    else:
+        mask = mask.astype(float_dtype)
     mask_fft = fft2(mask)
 
     fft = fft2(image)
