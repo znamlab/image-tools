@@ -32,6 +32,8 @@ def find_affine_by_block(
     Returns:
         affine_transform (function): function that gives the affine transformation for
             any point
+        inverse_map (function): function that gives the inverse affine transformation
+            for any point
         x_params (np.array): parameters (a_x, b_x, c_x) of the affine transformation in
             x direction
         y_params (np.array): parameters (a_y, b_y, c_y) of the affine transformation in
@@ -56,27 +58,89 @@ def find_affine_by_block(
     if np.sum(shifts - shifts[0]) < 1:
         shifts += np.random.normal(0, 0.01, shifts.shape)
 
-    huber_x = HuberRegressor(fit_intercept=True).fit(hom_centers, shifts[:, 0])
-    huber_y = HuberRegressor(fit_intercept=True).fit(hom_centers, shifts[:, 1])
+    huber_x = HuberRegressor(fit_intercept=True).fit(
+        hom_centers, shifts[:, 0] + hom_centers[:, 0]
+    )
+    huber_y = HuberRegressor(fit_intercept=True).fit(
+        hom_centers, shifts[:, 1] + hom_centers[:, 1]
+    )
 
     # finally make a function that gives the affine transformation for any point
-    def affine_transform(point):
+    def affine_transform(point: npt.NDArray):
+        """Affine transformation for a point or array of points.
+
+        Transforms coordinates of point in the reference image to the coordinates in the
+        target image.
+
+        Args:
+            point (np.array): point or array of points
+
+        Returns:
+            new_point (np.array): transformed point or array of points
+        """
         if not isinstance(point, np.ndarray):
             point = np.array(point)
         if point.ndim == 1:
             point = point.reshape(1, -1)
-        shift = np.hstack(
+        new_point = np.hstack(
             [
-                huber_x.predict(point).reshape(1, -1),
-                huber_y.predict(point).reshape(1, -1),
+                huber_x.predict(point).reshape(-1, 1),
+                huber_y.predict(point).reshape(-1, 1),
             ]
         )
-        new_point = point + shift
         return new_point
+
+    def inverse_map(point: npt.NDArray):
+        """Inverse affine transformation for a point or array of points.
+
+        Transforms coordinates of point in the target image to the coordinates in the
+        reference image.
+
+        Args:
+            point (np.array): point or array of points
+
+        Returns:
+            new_point (np.array): transformed point or array of points
+        """
+        if not isinstance(point, np.ndarray):
+            point = np.array(point)
+        if point.ndim == 1:
+            point = point.reshape(1, -1)
+        # inverse the affine transformation
+        """
+        We fit:
+        x_coords = a_x * x + b_x * y + c_x
+        y_coords = a_y * x + b_y * y + c_y
+
+        The inverse is:
+        x = (x_coords - c_x)/a_x - b_x /a_x * y
+        y = (y_coords - c_y)/b_y - a_y / b_y * x
+
+        with Ax = (x_coords - c_x)/a_x and Bx = - b_x /a_x
+        and Ay = (y_coords - c_y)/b_y and By = - a_y / b_y
+        x = Ax + Bx . y
+        y = Ay + By . x
+
+        so we can solve for x:
+        x = Ax + Bx(Ay + By * x)
+        x = (Ax + Bx . Ay) / (1 - Bx.By)
+        and for y:
+        y = Ay + By(Ax + Bx * y)
+        y = (Ay + By . Ax) / (1 - Bx.By)
+
+        """
+        Ax = (point[:, 0] - huber_x.intercept_) / huber_x.coef_[0]
+        Bx = -huber_x.coef_[1] / huber_x.coef_[0]
+        Ay = (point[:, 1] - huber_y.intercept_) / huber_y.coef_[1]
+        By = -huber_y.coef_[0] / huber_y.coef_[1]
+        x = (Ax + Bx * Ay) / (1 - Bx * By)
+        y = (Ay + By * Ax) / (1 - Bx * By)
+
+        return np.hstack([x.reshape(-1, 1), y.reshape(-1, 1)])
 
     x_params = np.hstack([huber_x.coef_, huber_x.intercept_])
     y_params = np.hstack([huber_y.coef_, huber_y.intercept_])
-    return affine_transform, x_params, y_params
+    return affine_transform, inverse_map, x_params, y_params
 
 
 def phase_correlation_by_block(

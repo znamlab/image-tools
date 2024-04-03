@@ -33,22 +33,34 @@ def test_affine_by_block():
         true_shifts[0] : 256 + true_shifts[0], true_shifts[1] : 256 + true_shifts[1], 0
     ]
 
-    affin, param_x, param_y = abb.find_affine_by_block(
+    affin, inv_map, param_x, param_y = abb.find_affine_by_block(
         fixed_image,
         moving_image,
         block_size=156,
         overlap=0.8,
         correlation_threshold=0.4,
     )
-    # a_x, a_y, b_x, and b_y should be very small
-    assert np.all(np.abs(param_x[:2]) < 0.01)
-    assert np.all(np.abs(param_y[:2]) < 0.01)
-    # c_x and c_y should be close to the true shifts
-    assert np.allclose(param_x[2], true_shifts[0], atol=1)
-    assert np.allclose(param_y[2], true_shifts[1], atol=1)
+    assert np.all(np.abs(param_x - np.array([1, 0, true_shifts[0]])) < 0.1)
+    assert np.all(np.abs(param_y - np.array([0, 1, true_shifts[1]])) < 0.1)
     # Test the affine transformation
     point = np.array([10, 10])
     assert np.allclose(affin(point)[0], point + true_shifts, atol=1)
+    # it should also work with a list
+    assert np.allclose(affin(point.tolist())[0], point + true_shifts, atol=1)
+    # and multiple points
+    points = np.array([[0, 0], [20, 30]])
+    assert np.allclose(affin(points), points + true_shifts, atol=1)
+
+    # and the inverse
+    assert np.allclose(inv_map(point)[0], point - true_shifts, atol=1)
+    # it should also work with a list
+    assert np.allclose(inv_map(point.tolist())[0], point - true_shifts, atol=1)
+    # and multiple points
+    assert np.allclose(inv_map(points), points - true_shifts, atol=1)
+
+    # inverse should invert the affine
+    assert np.allclose(inv_map(affin(point)), point, atol=1)
+    assert np.allclose(affin(inv_map(point)), point, atol=1)
 
 
 if __name__ == "__main__":
