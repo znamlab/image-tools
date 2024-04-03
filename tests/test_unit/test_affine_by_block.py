@@ -1,3 +1,5 @@
+from functools import partial
+
 import numpy as np
 from skimage import data
 
@@ -33,18 +35,24 @@ def test_affine_by_block():
         true_shifts[0] : 256 + true_shifts[0], true_shifts[1] : 256 + true_shifts[1], 0
     ]
 
-    affin, inv_map, param_x, param_y = abb.find_affine_by_block(
+    params = abb.find_affine_by_block(
         fixed_image,
         moving_image,
         block_size=156,
         overlap=0.8,
         correlation_threshold=0.4,
     )
-    assert np.all(np.abs(param_x - np.array([1, 0, true_shifts[0]])) < 0.1)
-    assert np.all(np.abs(param_y - np.array([0, 1, true_shifts[1]])) < 0.1)
+    true_params = np.array([1, 0, true_shifts[0], 0, 1, true_shifts[1]])
+    assert np.all(np.abs(params - true_params) < 0.1)
+
     # Test the affine transformation
+    affin = partial(abb.affine_transform, params=params)
+    inv_map = partial(abb.inverse_map, params=params)
     point = np.array([10, 10])
-    assert np.allclose(affin(point)[0], point + true_shifts, atol=1)
+
+    assert np.allclose(
+        abb.affine_transform(point, params)[0], point + true_shifts, atol=1
+    )
     # it should also work with a list
     assert np.allclose(affin(point.tolist())[0], point + true_shifts, atol=1)
     # and multiple points
