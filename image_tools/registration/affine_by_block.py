@@ -40,7 +40,7 @@ def find_affine_by_block(
 
     # first perform phase correlation by block
     shifts, corr, centers = phase_correlation_by_block(
-        reference, target, block_size=128, overlap=0.7
+        reference, target, block_size=block_size, overlap=overlap
     )
     # then fit affine transformation to the shifts
     shifts = shifts.reshape(-1, 2)
