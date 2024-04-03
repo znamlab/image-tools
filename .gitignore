@@ -82,3 +82,7 @@ venv/
 
 # written by setuptools_scm
 **/_version.py
+
+# Original matlab code from Dirk Padfield
+MaskedFFTRegistrationCode
+TranslationRotationScaleRegistration
