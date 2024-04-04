@@ -54,19 +54,19 @@ def find_affine_by_block(
 
     if correlation_threshold is not None:
         corr = corr.reshape(-1)
-        shifts = shifts[corr > correlation_threshold]
-        centers = centers[corr > correlation_threshold]
+        valid_shifts = shifts[corr > correlation_threshold]
+        valid_centers = centers[corr > correlation_threshold]
 
     # minor annoyance, if shifts are all exactly the same, the HuberRegressor will
     # sometimes fail to converge, in that case we add a small amount of noise
-    if np.sum(shifts - shifts[0]) < 1:
-        shifts += np.random.normal(0, 0.01, shifts.shape)
+    if np.sum(valid_shifts - valid_shifts[0]) < 1:
+        valid_shifts += np.random.normal(0, 0.01, valid_shifts.shape)
 
     huber_x = HuberRegressor(fit_intercept=True).fit(
-        centers, shifts[:, 0] + centers[:, 0]
+        valid_centers, valid_shifts[:, 0] + valid_centers[:, 0]
     )
     huber_y = HuberRegressor(fit_intercept=True).fit(
-        centers, shifts[:, 1] + centers[:, 1]
+        valid_centers, valid_shifts[:, 1] + valid_centers[:, 1]
     )
 
     params = np.hstack(
@@ -77,8 +77,8 @@ def find_affine_by_block(
         db = dict(
             huber_x=huber_x,
             huber_y=huber_y,
-            shifts=shifts,
-            centers=centers,
+            shifts=valid_shifts,
+            centers=valid_centers,
             corr=corr,
             nblocks=shape,
             block_size=block_size,
