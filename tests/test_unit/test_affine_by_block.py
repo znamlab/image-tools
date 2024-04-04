@@ -69,6 +69,16 @@ def test_affine_by_block():
     # inverse should invert the affine
     assert np.allclose(inv_map(affin(point)), point, atol=1)
     assert np.allclose(affin(inv_map(point)), point, atol=1)
+    # check debug mode can run
+    params, db = abb.find_affine_by_block(
+        fixed_image,
+        moving_image,
+        block_size=156,
+        overlap=0.8,
+        correlation_threshold=0.4,
+        debug=True,
+    )
+    assert "huber_x" in db
 
 
 if __name__ == "__main__":
