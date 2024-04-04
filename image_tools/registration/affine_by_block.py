@@ -77,8 +77,8 @@ def find_affine_by_block(
         db = dict(
             huber_x=huber_x,
             huber_y=huber_y,
-            shifts=valid_shifts,
-            centers=valid_centers,
+            shifts=shifts,
+            centers=centers,
             corr=corr,
             nblocks=shape,
             block_size=block_size,
