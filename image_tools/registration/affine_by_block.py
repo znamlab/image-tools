@@ -46,6 +46,10 @@ def find_affine_by_block(
     # then fit affine transformation to the shifts
     shifts = shifts.reshape(-1, 2)
     centers = centers.reshape(-1, 2)
+    # shifts are in the form (row, col), but we need (x, y)
+    # so we need to swap the columns
+    shifts = shifts[:, [1, 0]]
+    centers = centers[:, [1, 0]]
 
     if correlation_threshold is not None:
         corr = corr.reshape(-1)
@@ -122,7 +126,7 @@ def inverse_map(point: npt.NDArray, params: npt.NDArray):
     reference image.
 
     Args:
-        point (np.array): point or array of points
+        point (np.array): point or array of points, (x, y) not (row, col)
         params (np.array): parameters of the affine transformation,
             (a_x, b_x, c_x, a_y, b_y, c_y)
 
@@ -182,7 +186,7 @@ def phase_correlation_by_block(
         overlap (float, optional): fraction of overlap between blocks, defaults to 0.1
 
     Returns:
-        shifts (np.array): array of shifts for each block
+        shifts (np.array): array of shifts row/col for each block
         corrs (np.array): array of correlation coefficients for each block
         block_centers (np.array): array of centers of each block
 
