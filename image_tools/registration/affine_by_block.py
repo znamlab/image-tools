@@ -1,9 +1,8 @@
-from functools import partial
 from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
-from skimage.transform import warp
+from skimage.transform import AffineTransform, warp
 from sklearn.linear_model import HuberRegressor
 
 from . import phase_correlation as _pc
@@ -91,8 +90,15 @@ def find_affine_by_block(
 
 
 def transform_image(image: npt.NDArray, params: npt.NDArray, cval: float = 0):
-    inv_map = partial(inverse_map, params=params)
-    return warp(image, inv_map, preserve_range=True, cval=cval)
+    matrix = np.zeros((3, 3))
+    # add x/ y transform
+    matrix[0] = params[:3]
+    matrix[1] = params[3:]
+    # add the last row
+    matrix[2] = [0, 0, 1]
+
+    tform = AffineTransform(matrix=matrix)
+    return warp(image, tform.inverse, preserve_range=True, cval=cval)
 
 
 def affine_transform(point: npt.NDArray, params: npt.NDArray):

@@ -98,7 +98,6 @@ def test_transform_image(do_plot=False):
         - transformed[true_shifts[0] :, true_shifts[1] :]
     )
     assert np.sum(overlap) < 1
-
     if do_plot:
         import matplotlib.pyplot as plt
 
