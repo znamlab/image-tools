@@ -7,7 +7,7 @@ from image_tools.registration import affine_by_block as abb
 
 
 def test_phase_corr_by_block():
-    true_shifts = (10, 15)
+    true_shifts = (10, 20)
 
     # Make test data
     cat = data.cat()
@@ -27,7 +27,7 @@ def test_phase_corr_by_block():
 
 
 def test_affine_by_block():
-    true_shifts = (10, 15)
+    true_shifts = (10, 15)  # row columns
     # Make test data
     cat = data.cat()
     fixed_image = cat[:256, :256, 0]
@@ -42,7 +42,7 @@ def test_affine_by_block():
         overlap=0.8,
         correlation_threshold=0.4,
     )
-    true_params = np.array([1, 0, true_shifts[0], 0, 1, true_shifts[1]])
+    true_params = np.array([1, 0, true_shifts[1], 0, 1, true_shifts[0]])
     assert np.all(np.abs(params - true_params) < 0.1)
 
     # Test the affine transformation
@@ -50,21 +50,20 @@ def test_affine_by_block():
     inv_map = partial(abb.inverse_map, params=params)
     point = np.array([10, 10])
 
-    assert np.allclose(
-        abb.affine_transform(point, params)[0], point + true_shifts, atol=1
-    )
+    ts_xy = np.array([true_shifts[1], true_shifts[0]])
+    assert np.allclose(abb.affine_transform(point, params)[0], point + ts_xy, atol=1)
     # it should also work with a list
-    assert np.allclose(affin(point.tolist())[0], point + true_shifts, atol=1)
+    assert np.allclose(affin(point.tolist())[0], point + ts_xy, atol=1)
     # and multiple points
     points = np.array([[0, 0], [20, 30]])
-    assert np.allclose(affin(points), points + true_shifts, atol=1)
+    assert np.allclose(affin(points), points + ts_xy, atol=1)
 
     # and the inverse
-    assert np.allclose(inv_map(point)[0], point - true_shifts, atol=1)
+    assert np.allclose(inv_map(point)[0], point - ts_xy, atol=1)
     # it should also work with a list
-    assert np.allclose(inv_map(point.tolist())[0], point - true_shifts, atol=1)
+    assert np.allclose(inv_map(point.tolist())[0], point - ts_xy, atol=1)
     # and multiple points
-    assert np.allclose(inv_map(points), points - true_shifts, atol=1)
+    assert np.allclose(inv_map(points), points - ts_xy, atol=1)
 
     # inverse should invert the affine
     assert np.allclose(inv_map(affin(point)), point, atol=1)
@@ -81,7 +80,47 @@ def test_affine_by_block():
     assert "huber_x" in db
 
 
+def test_transform_image(do_plot=False):
+    true_shifts = (10, 50)
+    np.array([true_shifts[1], true_shifts[0]])
+    # Make test data
+    cat = data.cat()
+    fixed_image = cat[:256, :256, 0]
+    moving_image = cat[
+        true_shifts[0] : 256 + true_shifts[0], true_shifts[1] : 256 + true_shifts[1], 0
+    ]
+    true_params = np.array([1, 0, true_shifts[1], 0, 1, true_shifts[0]])
+    transformed = abb.transform_image(moving_image, true_params)
+
+    # the overlap part should be nicely registered
+    overlap = (
+        fixed_image[true_shifts[0] :, true_shifts[1] :]
+        - transformed[true_shifts[0] :, true_shifts[1] :]
+    )
+    assert np.sum(overlap) < 1
+
+    if do_plot:
+        import matplotlib.pyplot as plt
+
+        vmin = fixed_image.min()
+        vmax = fixed_image.max()
+        plt.subplot(2, 2, 1)
+        plt.imshow(fixed_image, cmap="Greens_r", vmin=vmin, vmax=vmax)
+        plt.subplot(2, 2, 2)
+        plt.imshow(moving_image, cmap="Reds_r", vmin=vmin, vmax=vmax)
+        plt.subplot(2, 2, 3)
+        plt.imshow(fixed_image, cmap="Greens_r", vmin=vmin, vmax=vmax)
+        plt.imshow(moving_image, cmap="Reds_r", alpha=0.5, vmin=vmin, vmax=vmax)
+        plt.subplot(2, 2, 4)
+        plt.imshow(fixed_image, cmap="Greens_r", alpha=0.5, vmin=vmin, vmax=vmax)
+        plt.imshow(transformed, cmap="Reds_r", alpha=0.5, vmin=vmin, vmax=vmax)
+
+        plt.show()
+
+
 if __name__ == "__main__":
-    test_affine_by_block()
     test_phase_corr_by_block()
+    test_affine_by_block()
+    test_transform_image()
+
     print("Everything passed")

@@ -1,7 +1,9 @@
+from functools import partial
 from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
+from skimage.transform import warp
 from sklearn.linear_model import HuberRegressor
 
 from . import phase_correlation as _pc
@@ -88,6 +90,11 @@ def find_affine_by_block(
     return params
 
 
+def transform_image(image: npt.NDArray, params: npt.NDArray, cval: float = 0):
+    inv_map = partial(inverse_map, params=params)
+    return warp(image, inv_map, preserve_range=True, cval=cval)
+
+
 def affine_transform(point: npt.NDArray, params: npt.NDArray):
     """Affine transformation for a point or array of points.
 
@@ -95,7 +102,7 @@ def affine_transform(point: npt.NDArray, params: npt.NDArray):
     target image.
 
     Args:
-        point (np.array): point or array of points
+        point (np.array): point or array of points, (x, y) not (row, col)
         params (np.array): parameters of the affine transformation,
             (a_x, b_x, c_x, a_y, b_y, c_y)
 
