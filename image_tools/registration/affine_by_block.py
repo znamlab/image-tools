@@ -63,8 +63,10 @@ def find_affine_by_block(
         hom_centers, shifts[:, 1] + hom_centers[:, 1]
     )
 
-    x_params = np.hstack([huber_x.coef_, huber_x.intercept_])
-    y_params = np.hstack([huber_y.coef_, huber_y.intercept_])
+    params = np.hstack(
+        [huber_x.coef_, huber_x.intercept_, huber_y.coef_, huber_y.intercept_]
+    )
+
     if debug:
         db = dict(
             huber_x=huber_x,
@@ -73,8 +75,8 @@ def find_affine_by_block(
             hom_centers=hom_centers,
             corr=corr,
         )
-        return x_params, y_params, db
-    return np.hstack([x_params, y_params])
+        return params, db
+    return params
 
 
 def affine_transform(point: npt.NDArray, params: npt.NDArray):
