@@ -12,6 +12,13 @@ def test_transform_image():
     transformed_im = transform_image(im)
     npt.assert_array_equal(im, transformed_im)
 
+    # Test case 2: Translation
+    shift = (10, 50)
+    transformed_im = transform_image(im, shift=shift)
+    expected_image = np.zeros_like(im)
+    expected_image[shift[0] :, shift[1] :] = im[: -shift[0], : -shift[1]]
+    npt.assert_array_equal(expected_image, transformed_im)
+
     # Test case 2: Rotation
     if False:
         # this doesn t work. THere is interpolation in the transform_image function

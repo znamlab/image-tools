@@ -19,7 +19,7 @@ def transform_image(
         im (npt.NDArray): image to transform
         scale (float): scale factor
         angle (float): rotation angle in degrees
-        shift (tuple): shift in x and y
+        shift (tuple): shift in row and column
         cval (float): value to fill in for pixels outside of the image
 
     Returns:
@@ -37,7 +37,7 @@ def make_transform(s: float, angle: float, shift: tuple, shape: tuple):
     Args:
         s (float): scale factor
         angle (float): rotation angle in degrees
-        shift (tuple): shift in x and y
+        shift (tuple): shift in row and column
         shape (tuple): shape of the image
 
     Returns:
