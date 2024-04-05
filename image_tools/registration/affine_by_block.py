@@ -56,6 +56,11 @@ def find_affine_by_block(
         corr = corr.reshape(-1)
         valid_shifts = shifts[corr > correlation_threshold]
         valid_centers = centers[corr > correlation_threshold]
+        if not len(valid_shifts):
+            raise ValueError("No valid shifts found")
+    else:
+        valid_shifts = shifts
+        valid_centers = centers
 
     # minor annoyance, if shifts are all exactly the same, the HuberRegressor will
     # sometimes fail to converge, in that case we add a small amount of noise

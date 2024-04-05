@@ -35,6 +35,18 @@ def test_affine_by_block():
         true_shifts[0] : 256 + true_shifts[0], true_shifts[1] : 256 + true_shifts[1], 0
     ]
 
+    # it works with no threshold
+    params = abb.find_affine_by_block(
+        fixed_image,
+        moving_image,
+        block_size=156,
+        overlap=0.8,
+        correlation_threshold=None,
+    )
+    true_params = np.array([1, 0, true_shifts[1], 0, 1, true_shifts[0]])
+    assert np.all(np.abs(params - true_params) < 0.5)
+
+    # but is better with
     params = abb.find_affine_by_block(
         fixed_image,
         moving_image,
