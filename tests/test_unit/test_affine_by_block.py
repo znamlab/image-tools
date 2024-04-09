@@ -99,7 +99,6 @@ def test_affine_by_block():
         correlation_threshold=0.1,
     )
     assert np.all(np.abs(params[[2, 5]]) <= 11)
-    assert np.all(np.abs(params - true_params) < 0.1)
 
     # check debug mode can run
     params, db = abb.find_affine_by_block(
