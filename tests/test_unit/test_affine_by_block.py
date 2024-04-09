@@ -24,6 +24,14 @@ def test_phase_corr_by_block():
     assert centers.shape == shifts.shape
     shift = np.nanmedian(shifts, axis=(0, 1))
     assert np.allclose(shift, true_shifts, atol=1)
+    shifts, corrs, centers = abb.phase_correlation_by_block(
+        fixed_image, moving_image, block_size=156, overlap=0.8, max_shift=11
+    )
+    assert np.all(np.abs(shifts) < 11)
+    shifts, corrs, centers = abb.phase_correlation_by_block(
+        fixed_image, moving_image, block_size=156, overlap=0.8, min_shift=5
+    )
+    assert np.all(np.abs(shifts) >= 5)
 
 
 def test_affine_by_block():
@@ -80,6 +88,19 @@ def test_affine_by_block():
     # inverse should invert the affine
     assert np.allclose(inv_map(affin(point)), point, atol=1)
     assert np.allclose(affin(inv_map(point)), point, atol=1)
+
+    # we can contrain min/max shifts. (the fit output can still be outside the limits)
+    params = abb.find_affine_by_block(
+        fixed_image,
+        moving_image,
+        block_size=156,
+        overlap=0.8,
+        max_shift=11,
+        correlation_threshold=0.1,
+    )
+    assert np.all(np.abs(params[[2, 5]]) <= 11)
+    assert np.all(np.abs(params - true_params) < 0.1)
+
     # check debug mode can run
     params, db = abb.find_affine_by_block(
         fixed_image,

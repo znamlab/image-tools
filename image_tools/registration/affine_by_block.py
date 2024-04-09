@@ -13,21 +13,28 @@ def find_affine_by_block(
     target: npt.NDArray,
     block_size: int = 256,
     overlap: float = 0.5,
+    max_shift: Optional[int] = None,
+    min_shift: int = 0,
     correlation_threshold: Optional[float] = None,
     debug: bool = False,
 ):
     """Find affine transformation between two images by dividing them into blocks and
     estimating translation for each block.
 
-    We fit:
+    Shifts are estimated with phase correlation on each block and then we fit:
     x_coords = a_x * x + b_x * y + c_x
     y_coords = a_y * x + b_y * y + c_y
+
+    Notes that max_shift and min_shifts are applied to the shifts after the phase
+    correlation, not to the fit (and the fit output can be outside of these limits).
 
     Args:
         reference (np.array): reference image
         target (np.array): target image
         block_size (int, optional): size of the blocks, defaults to 256
         overlap (float, optional): fraction of overlap between blocks, defaults to 0.5
+        max_shift (int, optional): maximum shift to consider, defaults to None
+        min_shift (int, optional): minimum shift to consider, defaults to 0
         correlation_threshold (float, optional): minimum correlation threshold, defaults
             to None
         debug (bool, optional): if True, return additional information, defaults to
@@ -41,7 +48,12 @@ def find_affine_by_block(
 
     # first perform phase correlation by block
     shifts, corr, centers = phase_correlation_by_block(
-        reference, target, block_size=block_size, overlap=overlap
+        reference,
+        target,
+        block_size=block_size,
+        overlap=overlap,
+        max_shift=max_shift,
+        min_shift=min_shift,
     )
     shape = shifts.shape
     # then fit affine transformation to the shifts
@@ -193,6 +205,8 @@ def phase_correlation_by_block(
     target: npt.NDArray,
     block_size: int = 256,
     overlap: float = 0.1,
+    max_shift: Optional[int] = None,
+    min_shift: int = 0,
 ):
     """Estimate translation between two images by dividing them into blocks and
     estimating translation for each block.
@@ -202,6 +216,8 @@ def phase_correlation_by_block(
         target (np.array): target image
         block_size (int, optional): size of the blocks, defaults to 256
         overlap (float, optional): fraction of overlap between blocks, defaults to 0.1
+        max_shift (int, optional): maximum shift to consider, defaults to None
+        min_shift (int, optional): minimum shift to consider, defaults to 0
 
     Returns:
         shifts (np.array): array of shifts row/col for each block
@@ -227,6 +243,8 @@ def phase_correlation_by_block(
             shift, corr = _pc.phase_correlation(
                 ref_block,
                 target_block,
+                max_shift=max_shift,
+                min_shift=min_shift,
             )[:2]
             shifts[row, col] = shift
             corrs[row, col] = corr
