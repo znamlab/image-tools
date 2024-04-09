@@ -15,6 +15,7 @@ def find_affine_by_block(
     overlap: float = 0.5,
     max_shift: Optional[int] = None,
     min_shift: int = 0,
+    binarisation_quantile: Optional[float] = None,
     correlation_threshold: Optional[float] = None,
     debug: bool = False,
 ):
@@ -35,6 +36,8 @@ def find_affine_by_block(
         overlap (float, optional): fraction of overlap between blocks, defaults to 0.5
         max_shift (int, optional): maximum shift to consider, defaults to None
         min_shift (int, optional): minimum shift to consider, defaults to 0
+        binarisation_quantile (float, optional): quantile to use for binarisation,
+            optional, defaults to None
         correlation_threshold (float, optional): minimum correlation threshold, defaults
             to None
         debug (bool, optional): if True, return additional information, defaults to
@@ -54,6 +57,7 @@ def find_affine_by_block(
         overlap=overlap,
         max_shift=max_shift,
         min_shift=min_shift,
+        binarisation_quantile=binarisation_quantile,
     )
     shape = shifts.shape
     # then fit affine transformation to the shifts
@@ -207,6 +211,7 @@ def phase_correlation_by_block(
     overlap: float = 0.1,
     max_shift: Optional[int] = None,
     min_shift: int = 0,
+    binarisation_quantile: Optional[float] = None,
 ):
     """Estimate translation between two images by dividing them into blocks and
     estimating translation for each block.
@@ -218,6 +223,8 @@ def phase_correlation_by_block(
         overlap (float, optional): fraction of overlap between blocks, defaults to 0.1
         max_shift (int, optional): maximum shift to consider, defaults to None
         min_shift (int, optional): minimum shift to consider, defaults to 0
+        binarisation_quantile (float, optional): quantile to use for binarisation,
+            optional, defaults to None
 
     Returns:
         shifts (np.array): array of shifts row/col for each block
@@ -240,9 +247,14 @@ def phase_correlation_by_block(
                 row * step_size : row * step_size + block_size,
                 col * step_size : col * step_size + block_size,
             ]
+            if binarisation_quantile is not None:
+                ref_block = ref_block > np.quantile(ref_block, binarisation_quantile)
+                target_block = target_block > np.quantile(
+                    target_block, binarisation_quantile
+                )
             shift, corr = _pc.phase_correlation(
-                ref_block,
-                target_block,
+                ref_block.astype(reference.dtype),
+                target_block.astype(target.dtype),
                 max_shift=max_shift,
                 min_shift=min_shift,
             )[:2]
