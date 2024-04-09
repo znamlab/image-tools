@@ -37,7 +37,7 @@ def test_phase_corr_by_block():
         moving_image,
         block_size=156,
         overlap=0.8,
-        binarisation_quantile=0.5,
+        binarise_quantile=0.5,
     )
     shift = np.nanmedian(shifts, axis=(0, 1))
     assert np.allclose(shift, true_shifts, atol=1)
