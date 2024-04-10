@@ -3,7 +3,7 @@ from typing import Optional
 import numpy as np
 import numpy.typing as npt
 from skimage.transform import AffineTransform, warp
-from sklearn.linear_model import HuberRegressor
+from sklearn.linear_model import HuberRegressor, LinearRegression
 
 from . import phase_correlation as _pc
 
@@ -17,6 +17,7 @@ def find_affine_by_block(
     min_shift: int = 0,
     binarise_quantile: Optional[float] = None,
     correlation_threshold: Optional[float] = None,
+    max_residual: float = 2,
     debug: bool = False,
 ):
     """Find affine transformation between two images by dividing them into blocks and
@@ -25,6 +26,11 @@ def find_affine_by_block(
     Shifts are estimated with phase correlation on each block and then we fit:
     x_coords = a_x * x + b_x * y + c_x
     y_coords = a_y * x + b_y * y + c_y
+
+    The fit is done in two steps:
+    1. Fit all shifts for which the correlation coefficient is above threshold with
+    HuberRegressor.
+    2. Exclude points with residuals above max_residual and refit with least squares.
 
     Notes that max_shift and min_shifts are applied to the shifts after the phase
     correlation, not to the fit (and the fit output can be outside of these limits).
@@ -38,8 +44,11 @@ def find_affine_by_block(
         min_shift (int, optional): minimum shift to consider, defaults to 0
         binarise_quantile (float, optional): quantile to use for binarisation,
             optional, defaults to None
-        correlation_threshold (float, optional): minimum correlation threshold, defaults
+        correlation_threshold (float, optional): minimum correlation threshold to
+            include shift in the initial fit. If None, all shifts are included, defaults
             to None
+        max_residual (float, optional): maximum residual to include shift in the final
+            fit, defaults to 2
         debug (bool, optional): if True, return additional information, defaults to
             False
 
@@ -89,15 +98,35 @@ def find_affine_by_block(
     huber_y = HuberRegressor(fit_intercept=True).fit(
         valid_centers, valid_shifts[:, 1] + valid_centers[:, 1]
     )
-
     params = np.hstack(
         [huber_x.coef_, huber_x.intercept_, huber_y.coef_, huber_y.intercept_]
     )
 
+    # Now to improve the fit we will exclude the point with residuals above 2px and
+    # refit with least squares
+    residuals = np.abs(
+        valid_shifts - (affine_transform(valid_centers, params) - valid_centers)
+    ).sum(axis=1)
+    nvalid = np.sum(residuals < max_residual)
+    if nvalid < 3:
+        raise ValueError(f"Only {nvalid} shifts with residual below {max_residual}.")
+    valid_shifts = valid_shifts[residuals < max_residual]
+    valid_centers = valid_centers[residuals < max_residual]
+    # Use scikit-learn LinearRegression just to have the same syntax
+    leastsq_x = LinearRegression(fit_intercept=True).fit(
+        valid_centers, valid_shifts[:, 0] + valid_centers[:, 0]
+    )
+    leastsq_y = LinearRegression(fit_intercept=True).fit(
+        valid_centers, valid_shifts[:, 1] + valid_centers[:, 1]
+    )
+    params = np.hstack(
+        [leastsq_x.coef_, leastsq_x.intercept_, leastsq_y.coef_, leastsq_y.intercept_]
+    )
+
     if debug:
         db = dict(
-            huber_x=huber_x,
-            huber_y=huber_y,
+            fit_x=leastsq_x,
+            fit_y=leastsq_y,
             shifts=shifts,
             centers=centers,
             corr=corr,

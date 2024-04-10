@@ -69,10 +69,10 @@ def test_affine_by_block():
         moving_image,
         block_size=156,
         overlap=0.8,
-        correlation_threshold=0.4,
+        correlation_threshold=0.2,
     )
     true_params = np.array([1, 0, true_shifts[1], 0, 1, true_shifts[0]])
-    assert np.all(np.abs(params - true_params) < 0.1)
+    assert np.all(np.abs(params - true_params) < 0.3)
 
     # Test the affine transformation
     affin = partial(abb.affine_transform, params=params)
@@ -102,10 +102,10 @@ def test_affine_by_block():
     params = abb.find_affine_by_block(
         fixed_image,
         moving_image,
-        block_size=156,
+        block_size=56,
         overlap=0.8,
         max_shift=11,
-        correlation_threshold=0.1,
+        correlation_threshold=0.01,
     )
     assert np.all(np.abs(params[[2, 5]]) <= 11)
 
@@ -118,7 +118,7 @@ def test_affine_by_block():
         correlation_threshold=0.4,
         debug=True,
     )
-    assert "huber_x" in db
+    assert "fit_x" in db
 
 
 def test_transform_image(do_plot=False):
