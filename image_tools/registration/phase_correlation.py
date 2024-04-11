@@ -263,8 +263,10 @@ def _simple_phase_corr(
         f1 = reference
     f2 = fft2(target.astype(float_dtype))
     if whiten:
-        f1 = f1 / np.abs(f1)
-        f2 = f2 / np.abs(f2)
+        # add the smallest number to avoid division by zero
+        precision = np.finfo(float_dtype).eps
+        f1 = f1 / (np.abs(f1) + precision)
+        f2 = f2 / (np.abs(f2) + precision)
     xcorr = np.abs(ifft2(f1 * np.conj(f2)))
 
     return xcorr
