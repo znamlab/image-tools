@@ -167,18 +167,17 @@ def _normxcorr2_masked(
     if fixed_squared_fft is None:
         fixed_squared_fft = fft2(fixed_image * fixed_image)
 
-    moving_image = moving_image.astype(float_dtype)
-    moving_mask = moving_mask.astype(float_dtype)
-    moving_mask = np.where(moving_mask <= 0, 0, 1)
-
-    moving_image = np.where(moving_mask == 0, 0, moving_image)
-
     rotated_moving_image = np.rot90(moving_image, 2)
     rotated_moving_mask = np.rot90(moving_mask, 2)
-
-    rotated_moving_fft = fft2(rotated_moving_image)
-    rotated_moving_mask_fft = fft2(rotated_moving_mask)
-    rotated_moving_squared_fft = fft2(rotated_moving_image * rotated_moving_image)
+    (
+        rotated_moving_fft,
+        rotated_moving_squared_fft,
+        rotated_moving_mask_fft,
+    ) = get_mask_and_ffts(
+        image=rotated_moving_image,
+        mask=rotated_moving_mask,
+        float_dtype=float_dtype,
+    )
 
     number_of_overlap_masked_pixels = ifft2(
         rotated_moving_mask_fft * fixed_mask_fft
@@ -269,3 +268,32 @@ def _simple_phase_corr(
     xcorr = np.abs(ifft2(f1 * np.conj(f2)))
 
     return xcorr
+
+
+def get_mask_and_ffts(image, mask=None, float_dtype=None):
+    """Create a mask from image and return FFTs required for masked_phase_correlation.
+
+    This function creates a mask from the image and returns the FFTs required for
+    masked_phase_correlation. The mask is created by thresholding the image at 0.
+
+
+    Args:
+        image (np.array): The image to create the mask from.
+    """
+    if float_dtype is None:
+        float_dtype = np.float32
+
+    if mask is None:
+        mask = image.astype(float_dtype)
+        mask = np.where(mask <= 0, 0, 1)
+    else:
+        mask = mask.astype(float_dtype)
+    mask_fft = fft2(mask)
+
+    fft = fft2(image)
+    image = image.astype(float_dtype)
+    image = np.where(mask == 0, 0, image)
+    fft = fft2(image)
+    fft_img_squared = fft2(image * image)
+
+    return fft, fft_img_squared, mask_fft

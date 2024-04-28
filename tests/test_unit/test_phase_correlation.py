@@ -4,7 +4,7 @@ import imageio.v2 as imageio
 import numpy as np
 import pytest
 
-from image_tools.registration import phase_correlation as mpc
+import image_tools.registration.phase_correlation as mpc
 from image_tools.similarity_transforms import transform_image
 
 
