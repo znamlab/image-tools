@@ -18,6 +18,8 @@ def find_affine_by_block(
     binarise_quantile: Optional[float] = None,
     correlation_threshold: Optional[float] = None,
     max_residual: float = 2,
+    min_valid_block_fraction: float = 0.1,
+    min_valid_block_number: int = 3,
     debug: bool = False,
 ):
     """Find affine transformation between two images by dividing them into blocks and
@@ -49,6 +51,10 @@ def find_affine_by_block(
             to None
         max_residual (float, optional): maximum residual to include shift in the final
             fit, defaults to 2
+        min_valid_block_fraction (float, optional): minimum fraction of valid blocks to
+            consider the fit valid, defaults to 0.1
+        min_valid_block_number (int, optional): minimum number of valid blocks to
+            consider the fit valid, defaults to 3
         debug (bool, optional): if True, return additional information, defaults to
             False
 
@@ -108,8 +114,13 @@ def find_affine_by_block(
         valid_shifts - (affine_transform(valid_centers, params) - valid_centers)
     ).sum(axis=1)
     nvalid = np.sum(residuals < max_residual)
-    if nvalid < 3:
-        raise ValueError(f"Only {nvalid} shifts with residual below {max_residual}.")
+    nblocks = len(residuals)
+    threshold = max(min_valid_block_number, min_valid_block_fraction * nblocks)
+    if nvalid < threshold:
+        raise ValueError(
+            f"Only {nvalid} shifts ({nvalid/nblocks*100:.2f}%)"
+            + f" with residual below {max_residual}."
+        )
     valid_shifts = valid_shifts[residuals < max_residual]
     valid_centers = valid_centers[residuals < max_residual]
     # Use scikit-learn LinearRegression just to have the same syntax
