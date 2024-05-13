@@ -1,6 +1,7 @@
 from functools import partial
 
 import numpy as np
+import pytest
 from skimage import data
 
 from image_tools.registration import affine_by_block as abb
@@ -119,6 +120,20 @@ def test_affine_by_block():
         debug=True,
     )
     assert "fit_x" in db
+
+    # if we fit noise, we should get a bad fit even if we have lots of blocks and some
+    # constraints
+    moving_image = np.random.rand(1024, 1024)
+    fixed_image = np.random.rand(1024, 1024)
+    with pytest.raises(ValueError):
+        abb.find_affine_by_block(
+            fixed_image,
+            moving_image,
+            block_size=256,
+            overlap=0.9,
+            correlation_threshold=None,
+            max_shift=10,
+        )
 
 
 def test_transform_image(do_plot=False):
