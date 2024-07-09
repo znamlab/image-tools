@@ -226,17 +226,17 @@ def _normxcorr2_masked(
 
 
 def _simple_phase_corr(
-    reference: npt.NDArray,
-    target: npt.NDArray,
+    fixed_image: npt.NDArray,
+    moving_image: npt.NDArray,
     whiten: Optional[int] = True,
-    fft_ref: Optional[int] = True,
+    fft_fixed: Optional[int] = True,
     float_dtype: Optional[np.dtype] = np.float32,
 ) -> npt.NDArray:
     """
     Compute phase correlation of two images.
 
     Args:
-        reference (numpy.ndarray): reference image
+        fixed_image (numpy.ndarray): fixed_image image
         target (numpy.ndarray): target image
         max_shift (int, optional): the range over which to search for the maximum of the
             cross-correlogram. Defaults to None.
@@ -245,7 +245,7 @@ def _simple_phase_corr(
         whiten (bool, optional): whether or not to whiten the FFTs of the images.
             If True, the method performs phase correlation, otherwise cross correlation
             is performed. Defaults to True.
-        fft_ref (bool, optional): whether to compute the FFT transform of the reference
+        fft_fixed (bool, optional): whether to compute the FFT transform of the fixed
             image. Defaults to True.
         float_dtype (np.dtype, optional): The dtype to use for the FFTs. Defaults to
             np.float32.
@@ -254,14 +254,14 @@ def _simple_phase_corr(
         xcorr: numpy.ndarray of the cross-correlagram itself.
 
     """
-    if fft_ref:
-        f1 = fft2(reference.astype(float_dtype))
+    if fft_fixed:
+        f1 = fft2(fixed_image.astype(float_dtype))
     else:
-        assert np.iscomplexobj(reference), (
-            "`reference` must be complex if fft_ref is False",
+        assert np.iscomplexobj(fixed_image), (
+            "`fixed_image` must be complex if fft_ref is False",
         )
-        f1 = reference
-    f2 = fft2(target.astype(float_dtype))
+        f1 = fixed_image
+    f2 = fft2(moving_image.astype(float_dtype))
     if whiten:
         f1 = f1 / np.abs(f1)
         f2 = f2 / np.abs(f2)
