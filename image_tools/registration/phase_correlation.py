@@ -66,7 +66,7 @@ def phase_correlation(
 
     if fixed_mask is None:
         # perform non-masked phase correlation
-        xcorr = _simple_phase_corr(
+        xcorr = simple_phase_corr(
             fixed_image,
             moving_image,
             whiten,
@@ -225,7 +225,7 @@ def _normxcorr2_masked(
     return xcorr, number_of_overlap_masked_pixels
 
 
-def _simple_phase_corr(
+def simple_phase_corr(
     fixed_image: npt.NDArray,
     moving_image: npt.NDArray,
     whiten: Optional[int] = True,
