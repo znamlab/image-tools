@@ -17,6 +17,7 @@ def find_affine_by_block(
     min_shift: int = 0,
     binarise_quantile: Optional[float] = None,
     correlation_threshold: Optional[float] = None,
+    whiten: bool = True,
     max_residual: float = 2,
     min_valid_block_fraction: float = 0.1,
     min_valid_block_number: int = 3,
@@ -49,6 +50,8 @@ def find_affine_by_block(
         correlation_threshold (float, optional): minimum correlation threshold to
             include shift in the initial fit. If None, all shifts are included, defaults
             to None
+        whiten (bool, optional): if True, perform phase rather than cross-correlation,
+            defaults to True
         max_residual (float, optional): maximum residual to include shift in the final
             fit, defaults to 2
         min_valid_block_fraction (float, optional): minimum fraction of valid blocks to
@@ -73,6 +76,7 @@ def find_affine_by_block(
         max_shift=max_shift,
         min_shift=min_shift,
         binarise_quantile=binarise_quantile,
+        whiten=whiten,
     )
     shape = shifts.shape
     # then fit affine transformation to the shifts
@@ -252,6 +256,7 @@ def phase_correlation_by_block(
     max_shift: Optional[int] = None,
     min_shift: int = 0,
     binarise_quantile: Optional[float] = None,
+    whiten: bool = True,
 ):
     """Estimate translation between two images by dividing them into blocks and
     estimating translation for each block.
@@ -265,6 +270,8 @@ def phase_correlation_by_block(
         min_shift (int, optional): minimum shift to consider, defaults to 0
         binarise_quantile (float, optional): quantile to use for binarisation,
             optional, defaults to None
+        whiten (bool, optional): if True, perform phase rather than cross-correlation,
+            defaults to True
 
     Returns:
         shifts (np.array): array of shifts row/col for each block
@@ -297,6 +304,7 @@ def phase_correlation_by_block(
                 target_block.astype(target.dtype),
                 max_shift=max_shift,
                 min_shift=min_shift,
+                whiten=whiten,
             )[:2]
             shifts[row, col] = shift
             corrs[row, col] = corr
