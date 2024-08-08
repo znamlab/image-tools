@@ -43,6 +43,19 @@ def test_phase_corr_by_block():
     shift = np.nanmedian(shifts, axis=(0, 1))
     assert np.allclose(shift, true_shifts, atol=1)
 
+    # it also works without whiten
+    assert np.all(np.abs(shifts) >= 5)
+    shifts, corrs, centers = abb.phase_correlation_by_block(
+        fixed_image,
+        moving_image,
+        block_size=156,
+        overlap=0.8,
+        binarise_quantile=0.5,
+        whiten=False,
+    )
+    shift = np.nanmedian(shifts, axis=(0, 1))
+    assert np.allclose(shift, true_shifts, atol=1)
+
 
 def test_affine_by_block():
     true_shifts = (10, 15)  # row columns
@@ -60,6 +73,18 @@ def test_affine_by_block():
         block_size=156,
         overlap=0.8,
         correlation_threshold=None,
+    )
+    true_params = np.array([1, 0, true_shifts[1], 0, 1, true_shifts[0]])
+    assert np.all(np.abs(params - true_params) < 0.5)
+
+    # it works without whiten
+    params = abb.find_affine_by_block(
+        fixed_image,
+        moving_image,
+        block_size=156,
+        overlap=0.8,
+        correlation_threshold=None,
+        whiten=False,
     )
     true_params = np.array([1, 0, true_shifts[1], 0, 1, true_shifts[0]])
     assert np.all(np.abs(params - true_params) < 0.5)
