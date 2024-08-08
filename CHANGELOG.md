@@ -1,5 +1,9 @@
 # Change log
 
+## 08/08/2024
+
+- Feature: add whiten argument in affine by block
+
 ## 13/05/2024
 
 - Bugfix: affine_by_block could fit noise if too many blocks were used. Add a threshold
