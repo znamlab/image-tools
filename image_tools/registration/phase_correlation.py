@@ -12,6 +12,10 @@ from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
+import matplotlib.pyplot as plt
+from skimage.registration import phase_cross_correlation
+from skimage.filters import difference_of_gaussians, window
+from skimage.transform import warp_polar
 from scipy.fft import fft2, fftshift, ifft2  # type: ignore
 
 
@@ -297,3 +301,102 @@ def get_mask_and_ffts(image, mask=None, float_dtype=None):
     fft_img_squared = fft2(image * image)
 
     return fft, fft_img_squared, mask_fft
+
+
+def estimate_rotation_and_scale(
+    fixed, moving, dog=(5, 20), estimate_scale=True, debug=False, upsample_factor=10
+):
+    """Estimate rotation and scale difference between two images.
+    Based on the example provided in skimage's phase_cross_correlation documentation.
+
+    Input images are band-pass filtered using difference of gaussians, and windowed.
+    The FFT magnitudes of the images are then polar or log-polar transformed and registered
+    using cross correlation. The shifts are then used to calculate rotation and scaling
+    parameters.
+
+    Args:
+        fixed (np.array): The fixed image.
+        moving (np.array): The moving image.
+        dog (tuple, optional): The parameters for the difference of gaussians filter.
+            Defaults to (5, 20).
+        estimate_scale (bool, optional): Whether to estimate the scale. Defaults to True.
+        debug (bool, optional): Whether to display debug information. Defaults to False.
+        upsample_factor (int, optional): The upsample factor. Defaults to 10.
+
+    Returns:
+        estimated_angle (float): The estimated rotation angle in degrees.
+        estimated_scale (float): The estimated scale difference.
+
+    """
+    # First, band-pass filter both images
+    fixed = difference_of_gaussians(fixed, dog[0], dog[1])
+    moving = difference_of_gaussians(moving, dog[0], dog[1])
+
+    # window images
+    wimage = fixed * window("hann", fixed.shape)
+    wmoving = moving * window("hann", fixed.shape)
+
+    # work with shifted FFT magnitudes
+    fixed_fs = np.abs(fftshift(fft2(wimage)))
+    moving_fs = np.abs(fftshift(fft2(wmoving)))
+
+    # Create log-polar transformed FFT mag images and register
+    shape = fixed_fs.shape
+    radius = shape[0] // 8  # only take lower frequencies
+    if estimate_scale:
+        scaling = "log"
+    else:
+        scaling = "linear"
+    warped_fixed_fs = warp_polar(
+        fixed_fs, radius=radius, output_shape=shape, order=0, scaling=scaling
+    )
+    warped_moving_fs = warp_polar(
+        moving_fs, radius=radius, output_shape=shape, order=0, scaling=scaling
+    )
+
+    warped_fixed_fs = warped_fixed_fs[: shape[0] // 2, :]  # only use half of FFT
+    warped_moving_fs = warped_moving_fs[: shape[0] // 2, :]
+    shifts, _, _ = phase_cross_correlation(
+        warped_fixed_fs,
+        warped_moving_fs,
+        upsample_factor=upsample_factor,
+        normalization=None,
+    )
+
+    # Use translation parameters to calculate rotation and scaling parameters
+    shiftr, shiftc = shifts[:2]
+    recovered_angle = (360 / shape[0]) * shiftr
+    klog = shape[1] / np.log(radius)
+    if estimate_scale:
+        shift_scale = np.exp(shiftc / klog)
+    else:
+        shift_scale = 1
+    if debug:
+        _, axes = plt.subplots(2, 2, figsize=(8, 8))
+        ax = axes.ravel()
+        ax[0].set_title("Fixed Image FFT\n(magnitude; zoomed)")
+        center = np.array(shape) // 2
+        ax[0].imshow(
+            fixed_fs[
+                center[0] - radius : center[0] + radius,
+                center[1] - radius : center[1] + radius,
+            ],
+            cmap="magma",
+        )
+        ax[1].set_title("Moving Image FFT\n(magnitude; zoomed)")
+        ax[1].imshow(
+            moving_fs[
+                center[0] - radius : center[0] + radius,
+                center[1] - radius : center[1] + radius,
+            ],
+            cmap="magma",
+        )
+        ax[2].set_title("Log-Polar-Transformed\nFixed FFT")
+        ax[2].imshow(warped_fixed_fs, cmap="magma")
+        ax[3].set_title("Log-Polar-Transformed\nMoving FFT")
+        ax[3].imshow(warped_moving_fs, cmap="magma")
+        plt.show()
+
+        print(f"Recovered value for cc rotation: {recovered_angle}")
+        print(f"Recovered value for scaling difference: {shift_scale}")
+    return recovered_angle, shift_scale
