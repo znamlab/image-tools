@@ -10,7 +10,6 @@ Translated from matlab code by D. Padfield using copilot.
 
 from typing import Optional
 
-import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt
 from scipy.fft import fft2, fftshift, ifft2  # type: ignore
@@ -372,6 +371,15 @@ def estimate_rotation_and_scale(
     else:
         shift_scale = 1
     if debug:
+        try:
+            import matplotlib.pyplot as plt
+        except ImportError as e:
+            raise ImportError(
+                "matplotlib is required for debug mode. "
+                "Please install it with 'pip install matplotlib' or "
+                "install the package with dev dependencies: "
+                "'pip install -e .[dev]'"
+            ) from e
         _, axes = plt.subplots(2, 2, figsize=(8, 8))
         ax = axes.ravel()
         ax[0].set_title("Fixed Image FFT\n(magnitude; zoomed)")
