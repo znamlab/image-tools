@@ -60,11 +60,6 @@ exclude = ["tests", "docs*"]
 [tool.pytest.ini_options]
 addopts = "--cov=image_tools"
 
-[tool.black]
-target-version = ['py39', 'py310', 'py311']
-skip-string-normalization = false
-line-length = 88
-
 [tool.setuptools_scm]
 
 [tool.check-manifest]
@@ -74,28 +69,38 @@ ignore = [
   "tests/",
   "tests/test_unit/",
   "tests/test_integration/",
-  "docs/",
-  "docs/source/",
 ]
-
 
 [tool.ruff]
 line-length = 88
-exclude = ["__init__.py","build",".eggs"]
-select = ["I", "E", "F"]
+exclude = ["__init__.py", "build", ".eggs"]
+lint.select = [
+  "E",   # pycodestyle errors
+  "F",   # Pyflakes
+  "I",   # isort
+  # You can see what all the rules do here: https://docs.astral.sh/ruff/rules/
+  # Some additional ruff rules that might be useful (uncomment to enable)
+  #"UP",  # pyupgrade
+  #"B",   # flake8 bugbear
+  #"SIM", # flake8 simplify
+  #"C90", # McCabe complexity
+]
 fix = true
+
+[tool.ruff.format]
+docstring-code-format = true # Also format code in docstrings (e.g. examples)
 
 [tool.tox]
 legacy_tox_ini = """
 [tox]
-envlist = py{39,310,311}
+envlist = py{311,312,313}
 isolated_build = True
 
 [gh-actions]
 python =
-    3.9: py39
-    3.10: py310
     3.11: py311
+    3.12: py312
+    3.13: py313
 
 [testenv]
 extras =
@@ -103,3 +108,8 @@ extras =
 commands =
     pytest -v --color=yes --cov=image_tools --cov-report=xml
 """
+
+
+[tool.codespell]
+skip = '.git'
+check-hidden = true
