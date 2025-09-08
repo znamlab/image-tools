@@ -124,7 +124,7 @@ def test_affine_by_block():
     assert np.allclose(inv_map(affin(point)), point, atol=1)
     assert np.allclose(affin(inv_map(point)), point, atol=1)
 
-    # we can contrain min/max shifts. (the fit output can still be outside the limits)
+    # we can constrain min/max shifts. (the fit output can still be outside the limits)
     params = abb.find_affine_by_block(
         fixed_image,
         moving_image,
