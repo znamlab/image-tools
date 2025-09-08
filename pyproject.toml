@@ -40,6 +40,16 @@ dev = [
   "setuptools_scm",
   "imageio",
 ]
+docs = [
+  "sphinx",
+  "pydata-sphinx-theme",
+  "sphinx-autodoc-typehints",
+  "sphinx-sitemap",
+  "myst-parser",
+  "nbsphinx",
+  "linkify-it-py",
+  "setuptools-scm",
+]
 
 [build-system]
 requires = [
