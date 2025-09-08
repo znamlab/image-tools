@@ -122,7 +122,7 @@ def find_affine_by_block(
     threshold = max(min_valid_block_number, min_valid_block_fraction * nblocks)
     if nvalid < threshold:
         raise ValueError(
-            f"Only {nvalid} shifts ({nvalid/nblocks*100:.2f}%)"
+            f"Only {nvalid} shifts ({nvalid / nblocks * 100:.2f}%)"
             + f" with residual below {max_residual}."
         )
     valid_shifts = valid_shifts[residuals < max_residual]

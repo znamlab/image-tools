@@ -12,11 +12,10 @@ from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
-import matplotlib.pyplot as plt
-from skimage.registration import phase_cross_correlation
-from skimage.filters import difference_of_gaussians, window
-from skimage.transform import warp_polar
 from scipy.fft import fft2, fftshift, ifft2  # type: ignore
+from skimage.filters import difference_of_gaussians, window
+from skimage.registration import phase_cross_correlation
+from skimage.transform import warp_polar
 
 
 def phase_correlation(
@@ -149,9 +148,9 @@ def _normxcorr2_masked(
     """
 
     if fixed_mask_is_fft:
-        assert (
-            fixed_image_is_fft
-        ), "If fixed_mask_is_fft is True, fixed_image_is_fft must also be True"
+        assert fixed_image_is_fft, (
+            "If fixed_mask_is_fft is True, fixed_image_is_fft must also be True"
+        )
         fixed_mask_fft = fixed_mask
     else:
         fixed_mask = fixed_mask.astype(float_dtype)
@@ -159,9 +158,9 @@ def _normxcorr2_masked(
         fixed_mask_fft = fft2(fixed_mask)
 
     if fixed_image_is_fft:
-        assert (
-            fixed_squared_fft is not None
-        ), "If fixed_image_is_fft is True, fixed_image_squared_fft must be provided"
+        assert fixed_squared_fft is not None, (
+            "If fixed_image_is_fft is True, fixed_image_squared_fft must be provided"
+        )
         fixed_fft = fixed_image
     else:
         fixed_image = fixed_image.astype(float_dtype)
@@ -310,16 +309,16 @@ def estimate_rotation_and_scale(
     Based on the example provided in skimage's phase_cross_correlation documentation.
 
     Input images are band-pass filtered using difference of gaussians, and windowed.
-    The FFT magnitudes of the images are then polar or log-polar transformed and registered
-    using cross correlation. The shifts are then used to calculate rotation and scaling
-    parameters.
+    The FFT magnitudes of the images are then polar or log-polar transformed and
+    registered using cross correlation. The shifts are then used to calculate rotation
+    and scaling parameters.
 
     Args:
         fixed (np.array): The fixed image.
         moving (np.array): The moving image.
         dog (tuple, optional): The parameters for the difference of gaussians filter.
             Defaults to (5, 20).
-        estimate_scale (bool, optional): Whether to estimate the scale. Defaults to True.
+        estimate_scale (bool, optional): Whether to estimate the scale. Defaults to True
         debug (bool, optional): Whether to display debug information. Defaults to False.
         upsample_factor (int, optional): The upsample factor. Defaults to 10.
 
@@ -372,6 +371,15 @@ def estimate_rotation_and_scale(
     else:
         shift_scale = 1
     if debug:
+        try:
+            import matplotlib.pyplot as plt
+        except ImportError as e:
+            raise ImportError(
+                "matplotlib is required for debug mode. "
+                "Please install it with 'pip install matplotlib' or "
+                "install the package with dev dependencies: "
+                "'pip install -e .[dev]'"
+            ) from e
         _, axes = plt.subplots(2, 2, figsize=(8, 8))
         ax = axes.ravel()
         ax[0].set_title("Fixed Image FFT\n(magnitude; zoomed)")

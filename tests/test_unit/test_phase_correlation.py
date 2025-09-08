@@ -71,9 +71,9 @@ def test_masked_phase_correlation(do_plot=False):
                 - fixed_image[overlap].astype(float)
             )
         )
-        assert difference < 20, f"Test {i+1}: Difference between images is too large."
+        assert difference < 20, f"Test {i + 1}: Difference between images is too large."
 
-        assert max_corr > 0.9, f"Test {i+1}: Correlation score is too low."
+        assert max_corr > 0.9, f"Test {i + 1}: Correlation score is too low."
         true_translation = np.array([y[i], -x[i]])
         translation_error = np.abs(np.array(translation) - true_translation)
         assert np.sum(translation_error) < 4, "Translation error is too large."
@@ -85,10 +85,10 @@ def test_masked_phase_correlation(do_plot=False):
             overlay_image = overlay_registration(fixed_image, transformed_moving_image)
             plt.figure()
             plt.imshow(overlay_image)
-            plt.title(f"Test {i+1}: Registered Overlay Image")
-            plt.savefig(test_dir / f"test_data/RegisteredOverlayImage{i+1}.png")
+            plt.title(f"Test {i + 1}: Registered Overlay Image")
+            plt.savefig(test_dir / f"test_data/RegisteredOverlayImage{i + 1}.png")
 
-            print(f"Test {i+1}:")
+            print(f"Test {i + 1}:")
             print(f"Computed translation: {translation[0]} {-translation[1]}")
             print(f"Correlation score: {max_corr}")
             print(
