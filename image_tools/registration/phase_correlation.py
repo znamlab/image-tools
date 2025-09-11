@@ -266,8 +266,11 @@ def simple_phase_corr(
         f1 = fixed_image
     f2 = fft2(moving_image.astype(float_dtype))
     if whiten:
-        f1 = f1 / np.abs(f1)
-        f2 = f2 / np.abs(f2)
+        # Perform phase correlation instead of cross-correlation
+        # Add a small epsilon to avoid division by zero
+        eps = np.finfo(np.float64).eps
+        f1 = f1 / (np.abs(f1) + eps)
+        f2 = f2 / (np.abs(f2) + eps)
     xcorr = np.abs(ifft2(f1 * np.conj(f2)))
 
     return xcorr

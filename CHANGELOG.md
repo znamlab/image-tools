@@ -1,5 +1,9 @@
 # Change log
 
+## 11/09/2025
+
+- add `eps` when whitening to avoid divid by 0 warnings and NaNs.
+
 ## 08/08/2024
 
 - Feature: add whiten argument in affine by block
