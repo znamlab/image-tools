@@ -364,7 +364,7 @@ def estimate_rotation_and_scale(
 
     warped_fixed_fs = warped_fixed_fs[: shape[0] // 2, :]  # only use half of FFT
     warped_moving_fs = warped_moving_fs[: shape[0] // 2, :]
-    shifts, _, _ = phase_cross_correlation(
+    shifts, err, phasediff = phase_cross_correlation(
         warped_fixed_fs,
         warped_moving_fs,
         upsample_factor=upsample_factor,
@@ -416,4 +416,9 @@ def estimate_rotation_and_scale(
 
         print(f"Recovered value for cc rotation: {recovered_angle}")
         print(f"Recovered value for scaling difference: {shift_scale}")
-    return recovered_angle, shift_scale
+        print(f"Error: {err}")
+        print(f"Phase difference: {phasediff}")
+    if debug:
+        return recovered_angle, shift_scale, err, phasediff, warped_fixed_fs, warped_moving_fs
+    else:
+        return recovered_angle, shift_scale
