@@ -339,10 +339,14 @@ def estimate_rotation_and_scale(
     if hann:
         wimage = fixed * window("hann", fixed.shape)
         wmoving = moving * window("hann", fixed.shape)
-
+        # work with shifted FFT magnitudes
+        fixed_fs = np.abs(fftshift(fft2(wimage)))
+        moving_fs = np.abs(fftshift(fft2(wmoving)))
+        
     # work with shifted FFT magnitudes
-    fixed_fs = np.abs(fftshift(fft2(wimage)))
-    moving_fs = np.abs(fftshift(fft2(wmoving)))
+    fixed_fs = np.abs(fftshift(fft2(fixed)))
+    moving_fs = np.abs(fftshift(fft2(moving)))
+
 
     # Create log-polar transformed FFT mag images and register
     shape = fixed_fs.shape
