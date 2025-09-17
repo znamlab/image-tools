@@ -306,7 +306,7 @@ def get_mask_and_ffts(image, mask=None, float_dtype=None):
 
 
 def estimate_rotation_and_scale(
-    fixed, moving, dog=(5, 20), estimate_scale=True, debug=False, upsample_factor=10, hann=False
+    fixed, moving, dog=(5, 20), estimate_scale=True, debug=False, upsample_factor=10, hann=False, normalization=None
 ):
     """Estimate rotation and scale difference between two images.
     Based on the example provided in skimage's phase_cross_correlation documentation.
@@ -368,7 +368,7 @@ def estimate_rotation_and_scale(
         warped_fixed_fs,
         warped_moving_fs,
         upsample_factor=upsample_factor,
-        normalization=None,
+        normalization=normalization,
     )
 
     # Use translation parameters to calculate rotation and scaling parameters
