@@ -306,7 +306,7 @@ def get_mask_and_ffts(image, mask=None, float_dtype=None):
 
 
 def estimate_rotation_and_scale(
-    fixed, moving, dog=(5, 20), estimate_scale=True, debug=False, upsample_factor=10
+    fixed, moving, dog=(5, 20), estimate_scale=True, debug=False, upsample_factor=10, hann=False
 ):
     """Estimate rotation and scale difference between two images.
     Based on the example provided in skimage's phase_cross_correlation documentation.
@@ -331,12 +331,14 @@ def estimate_rotation_and_scale(
 
     """
     # First, band-pass filter both images
-    fixed = difference_of_gaussians(fixed, dog[0], dog[1])
-    moving = difference_of_gaussians(moving, dog[0], dog[1])
+    if dog is not None:
+        fixed = difference_of_gaussians(fixed, dog[0], dog[1])
+        moving = difference_of_gaussians(moving, dog[0], dog[1])
 
     # window images
-    wimage = fixed * window("hann", fixed.shape)
-    wmoving = moving * window("hann", fixed.shape)
+    if hann:
+        wimage = fixed * window("hann", fixed.shape)
+        wmoving = moving * window("hann", fixed.shape)
 
     # work with shifted FFT magnitudes
     fixed_fs = np.abs(fftshift(fft2(wimage)))
